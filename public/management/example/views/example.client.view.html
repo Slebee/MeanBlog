@@ -1,0 +1,7 @@
+<section ng-controller="ExampleController" style="width:100%;height:100%">
+    <div data-ng-show="!authentication.user">
+        <a href="/signup">Signup</a>
+        <a href="/signin">Signin</a>
+    </div>
+    <div data-ng-show="authentication.user" style="width:100%;height:100%"></div>
+</section>

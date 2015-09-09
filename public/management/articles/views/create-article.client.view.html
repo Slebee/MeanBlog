@@ -1,0 +1,26 @@
+<create-Article data-ng-controller="ArticlesController">
+    <h1>New Article</h1>
+    <form data-ng-submit="create()" novalidate>
+        <div>
+            <label for="title">Title</label>
+            <div>
+                <input type="text" data-ng-model="title" id="title" placeholder="Title" required>
+            </div>
+        </div>
+        <div>
+            <label for="content">Content</label>
+            <div>
+                <textarea data-ng-model="content" id="content" cols="30" rows="10" placeholder="Content"></textarea>
+            </div>
+            <script id="editor" type="text/plain" style="width:1024px;height:500px;"></script>
+        </div>
+        <div>
+            <input type="submit">
+            <!--<input type="button" onclick="getContent()">-->
+        </div>
+        <div data-ng-show="error">
+            <strong data-ng-bind="error"></strong>
+        </div>
+    </form>
+</create-Article>
+

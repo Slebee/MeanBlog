@@ -1,0 +1,222 @@
+body{
+    margin:0;
+    padding:0;
+    font-size:14px;
+}
+.jumbotron{
+    background:none;
+}
+header{
+    padding-top:30px;
+}
+.container{
+    width:900px;
+    margin:0 auto;
+}
+.pull-right{
+    float: right;
+}
+.text-center{
+    text-align: center;
+}
+h1.hello{
+    margin:10px 0 0 0;
+    font-family: "Microsoft YaHei";
+}
+p.introduction{
+    color:#727272;
+    margin-top:10px;
+    font-size:12px;
+}
+.avatar{
+    width:100px;
+    height:100px;
+    margin:0 auto;
+    border-radius:50%;
+    background: url("/images/avatar.jpg") no-repeat;
+    -webkit-background-size: 100%;
+    background-size: 100%;
+    overflow: hidden;
+    -webkit-transition: all 1s;
+    -moz-transition: all 1s;
+    -ms-transition: all 1s;
+    -o-transition: all 1s;
+    transition: all 1s;
+}
+.avatar:hover{
+    -webkit-background-size: 130%;
+    background-size: 130%;
+}
+.avatar>img{
+    width:100%;
+    height:100%;
+}
+
+/*main*/
+.main{
+    margin-top:50px;
+}
+.h-wrap .line{
+    width:100%;
+    height:1px;
+    border-top:1px solid #ccc;
+    margin-bottom:-15px;
+}
+.list-h1{
+    display: block;
+    width:100px;
+    line-height: 30px;
+    border:1px solid #ccc;
+    border-radius:20px;
+    background-color:#fff;
+    font-size:18px;
+    color:#a3a3a3;
+    margin:0 auto;
+    text-align: center;
+}
+.article-list-wrap{
+    padding:0 10px;
+}
+.article-list-item{
+    padding:0 0 20px 0;
+    border-bottom:1px dotted #ccc;
+}
+
+.article-list-item h3>a{
+    color:#333;
+    text-decoration: none;
+    cursor: pointer;
+    font-size:16px;
+    font-family: "Microsoft YaHei";
+}
+.article-list-item h3>small{
+    margin-top:10px;
+    color:#ccc;
+    font-size:12px;
+}
+.article-list-item h3>small>span{
+    margin-right:5px;
+    font-size:16px;
+}
+.article-list-item>p.content{
+    color:#a3a3a3;
+    font-size:12px;
+    word-break:break-all;
+    line-height: 20px;
+    text-indent:2em;
+}
+.comment-count{
+    width:30px;
+    line-height: 30px;
+    border-radius: 10px;
+    text-align: center;
+    background-color:#ccc;
+    color:#fff;
+    font-weight: normal;
+    font-size:14px;
+}
+.article-list-item>p.parm{
+    color:#ccc
+}
+.load-more{
+    border:1px dashed #ccc;
+    width:140px;
+    padding:5px 10px;
+    border-radius:20px;
+    margin:30px auto 30px auto;
+    cursor: pointer;
+    text-align: center;
+    font-size:14px;
+    color:#ccc;
+}
+
+.article-detail-wrap{
+    position: fixed;
+    width:100%;
+    height:100%;
+    top:0;
+    background-color:#fefefe;
+}
+.article-detail-wrap.ng-enter{
+    animation:rotateInDownLeft .5s;
+}
+.article-detail-wrap.ng-leave{
+    animation:rotateOutUpRight .5s;
+}
+
+
+.article-detail-box{
+    display: block;
+    width:1000px;
+    margin:15px auto;
+    background-color:#fff;
+    -webkit-box-shadow: 0 0 15px 10px #666;
+    -moz-box-shadow: 0 0 15px 10px #666;
+    box-shadow: 0 0 15px 10px #666;
+}
+a.close{
+    display: block;
+    width:60px;
+    height:60px;
+    background-color:#ccc;
+    position: fixed;
+    right:20px;
+    top:20px;
+}
+.part-article{
+    padding:20px 20px;
+}
+.article-header{
+    overflow: hidden;
+}
+.article-header .article-avatar{
+    width:50px;
+    border-radius:50%;
+    overflow: hidden;
+    float: left;
+}
+.article-information{
+    float: left;
+    margin-left:15px;
+}
+.article-information>h1{
+    margin:0;
+    font-size:18px;
+    font-family: "Microsoft YaHei";
+}
+.article-information>small{
+    display: block;
+    margin-top:10px;
+    color:#666;
+}
+.article-information>small>em{
+    font-style: normal;
+}
+.main-article{
+    margin-top:10px;
+    border-top:1px dotted #ccc;
+    border-bottom:1px dotted #ccc;
+    min-height: 500px;
+    padding-top:20px;
+}
+.part-comment{
+    height: 100%;
+    padding:20px;
+    -webkit-transition: all .5s;
+    -moz-transition: all .5s;
+    -ms-transition: all .5s;
+    -o-transition: all .5s;
+    transition: all .5s;
+}
+.light-box{
+    position: fixed;
+    background-color:#000;
+    opacity:.5;
+    filter:alpha(opacity=50);
+    width:100%;
+    height:100%;
+    left:0;
+    top:0;
+    z-index:-1;
+
+}

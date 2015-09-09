@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>后台</title>
+    <!-- Loading Bootstrap -->
+    <link href="/faltUi/css/vendor/bootstrap.min.css" rel="stylesheet">
+    <link href="/faltUi/css/vendor/dashboard.css" rel="stylesheet">
+    <!-- Loading Flat UI -->
+    <link href="faltUi/css/flat-ui.css" rel="stylesheet">
+    <link href="/management/styles/admin.min.css" rel="stylesheet">
+
+    <link rel="shortcut icon" href="img/favicon.ico">
+
+    <!-- HTML5 shim, for IE6-8 support of HTML5 elements. All other JS at the end of file. -->
+    <!--[if lt IE 9]>
+    <script src="/faltUi/js/vendor/html5shiv.js"></script>
+    <script src="/faltUi/js/vendor/respond.min.js"></script>
+    <![endif]-->
+    <script src="/lib/jquery-2.1.4.min.js"></script>
+</head>
+<body>
+<!--<h1>Hello <span data-ng-bind="authentication.user.fullName"></span></h1>
+<a href="/signout">Signout</a>
+<ul>
+    <li><a href="/#!/chat">Chat</a></li>
+    <li><a href="/#!/articles">List Articles</a></li>
+    <li><a href="/#!/articles/create">Create Article</a></li>
+</ul>-->
+
+<!--nav start-->
+<nav class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+    <!-- Brand and toggle get grouped for better mobile display -->
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar-collapse-5">
+            <span class="sr-only">Toggle navigation</span>
+        </button>
+        <a class="navbar-brand" href="#">SLEBEE</a>
+    </div>
+
+    <!-- Collect the nav links, forms, and other content for toggling -->
+    <div class="collapse navbar-collapse" id="navbar-collapse-5">
+        <ul class="nav navbar-nav">
+            <li><a href="#">Messages<span class="navbar-unread">1</span></a></li>
+            <li class="active"><a href="#">About Us</a></li>
+            <li><a href="#">Clients</a></li>
+        </ul>
+        <form class="navbar-form navbar-left" action="#" role="search">
+            <div class="form-group">
+                <div class="input-group">
+                    <input class="form-control" id="navbarInput-01" type="search" placeholder="Search">
+                <span class="input-group-btn">
+                  <button type="submit" class="btn"><span class="fui-search"></span></button>
+                </span>
+                </div>
+            </div>
+        </form>
+        <ul class="nav navbar-nav navbar-right">
+            <li class="dropdown">
+                <a href="#" class="dropdown-toggle" data-toggle="dropdown">MonsterCritic <b class="caret"></b></a>
+                <ul class="dropdown-menu">
+                    <li><a href="#">Action</a></li>
+                    <li><a href="#">Another action</a></li>
+                    <li><a href="#">Something else here</a></li>
+                    <li class="divider"></li>
+                    <li><a href="#">Separated link</a></li>
+                </ul>
+            </li>
+            <li><a href="/signout"><span class="visible-sm visible-xs">Settings<span class="fui-gear"></span></span><span class="visible-md visible-lg"><span class="fui-gear"></span></span></a></li>
+        </ul>
+    </div><!-- /.navbar-collapse -->
+</nav>
+<!--nav stop-->
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-sm-3 col-md-2 sidebar"  >
+            <ul class="nav nav-sidebar">
+                <li class="active"><a href="javascript:" ng-click=""><span class="fui-home"></span>主页 <span class="sr-only">(current)</span></a></li>
+                <li><a href="admin#!/articles/create"><span class="fui-plus"></span>添加文章</a></li>
+                <li><a href="admin#!/articles" ><span class="fui-document"></span>文章列表</a></li>
+                <li><a href="javascript:" ng-click="loadPanel(3,$event)"><span class="fui-list-large-thumbnails"></span>其他</a></li>
+            </ul>
+        </div>
+        <section class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2" ng-view>
+
+        </section>
+    </div>
+</div>
+</body>
+<script type="text/javascript">
+    window.user = <%- user || 'null' %>;
+    console.log(window.user)
+</script>
+
+<script type="text/javascript" src="socket.io/socket.io.js"></script>
+<script type="text/javascript" src="/lib/angular/angular.js"></script>
+<script src="/lib/angular-animate/angular-animate.js"></script>
+<script type="text/javascript" src="/lib/angular-route/angular-route.js"></script>
+<script type="text/javascript" src="/lib/angular-resource/angular-resource.js"></script>
+<script type="text/javascript" src="/management/articles/articles.client.
+module.js"></script>
+<script type="text/javascript" src="/management/articles/directives/admin.articles.client.directive.js"></script>
+<script type="text/javascript" src="/management/articles/controllers/articles.client.
+controller.js"></script>
+<script type="text/javascript" src="/management/articles/services/articles.client.
+service.js"></script>
+<script type="text/javascript" src="/management/articles/config/articles.client.routes.
+js"></script>
+<script type="text/javascript" src="/management/example/example.client.module.js">
+</script>
+<script type="text/javascript" src="/management/example/controllers/example.client.
+controller.js"></script>
+<script type="text/javascript" src="/management/example/config/example.client.routes.js">
+</script>
+<script type="text/javascript" src="/management/users/users.client.module.js"></script>
+<script type="text/javascript" src="/management/users/services/authentication.client.
+service.js"></script>
+<script type="text/javascript" src="/management/chat/chat.client.module.js"></script>
+<script type="text/javascript" src="/management/chat/services/chat.client.service.js">
+</script>
+<script type="text/javascript" src="/management/chat/controllers/chat.client.controller.
+js"></script>
+<script type="text/javascript" src="/management/chat/config/chat.client.routes.js">
+</script>
+<!--Bootstrap AngularJS Application-->
+<script type="text/javascript" src="/management/admin.application.js"></script>
+
+<script type="text/javascript" charset="utf-8" src="/ueditor/ueditor.config.js"></script>
+<script type="text/javascript" charset="utf-8" src="/ueditor/ueditor.all.min.js"> </script>
+
+</html>

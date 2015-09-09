@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head lang="CN">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <title>Slebee</title>
+  <!--<link rel="stylesheet" type="text/css" href="styles/slebee.min.css">-->
+  <link href="//cdn.bootcss.com/animate.css/3.4.0/animate.min.css" rel="stylesheet">
+  <link href="/blog/styles/slebee.css" rel="stylesheet">
+  <style>
+    .part-comment #SOHUCS #SOHU_MAIN #powerby_sohu .section-service-w .service-wrap-w a{
+      display: none!important;
+    }
+    #SOHUCS #list_hot{
+      display: none!important;
+    }
+    #SOHUCS{
+      transition: all 1s;
+    }
+  </style>
+</head>
+<body>
+<div class="light-box"></div>
+<div class="article-detail-box">
+  <div class="part-article">
+    <div class="article-header">
+      <div class="article-avatar">
+        <img src="/images/avatar.jpg" width="50" />
+      </div>
+      <div class="article-information">
+        <h1> <%=title%> </h1>
+        <small>
+          <em>Posted on</em>
+          <em > <%=created%> </em>
+          <em>by</em>
+          <em> <%=creator.fullName%> </em>
+        </small>
+      </div>
+    </div>
+    <div class="main-article"><%-content%></div>
+  </div>
+  <div class="part-comment">
+    <!--高速版-->
+    <div id="SOHUCS" sid="<%=_id%>"></div>
+    <script charset="utf-8" type="text/javascript" src="http://changyan.sohu.com/upload/changyan.js" ></script>
+    <script type="text/javascript">
+      window.changyan.api.config({
+        appid: 'cyrTELar4',
+        conf: 'prod_357c94518d69786f38775061397f2095'
+      });
+    </script>
+  </div>
+
+</div>
+</body>
+</html>

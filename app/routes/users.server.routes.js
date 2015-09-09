@@ -1,0 +1,19 @@
+var users = require('../../app/controllers/users.server.controller'),
+    passport = require('passport');
+module.exports = function(app){
+
+    app.route('/signup')
+        .get(users.renderSignup)
+        .post(users.signup);
+
+    app.route('/signin')
+        .get(users.renderSignin)
+        .post(passport.authenticate('local',{
+            successRedirect:'/admin',
+            failureRedirect:'/signin',
+            failureFlash:true
+        }));
+    app.get('/signout', users.signout);
+    //当请求地址带有userID
+    app.param('userId',users.userByID);
+};

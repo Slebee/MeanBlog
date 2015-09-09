@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Register</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Loading Bootstrap -->
+    <link href="faltUi/css/vendor/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Loading Flat UI -->
+    <link href="faltUi/css/flat-ui.css" rel="stylesheet">
+
+    <link rel="shortcut icon" href="img/favicon.ico">
+
+    <link href="styles/admin.min.css" rel="stylesheet">
+
+    <!-- HTML5 shim, for IE6-8 support of HTML5 elements. All other JS at the end of file. -->
+    <!--[if lt IE 9]>
+    <script src="faltUi/js/vendor/html5shiv.js"></script>
+    <script src="faltUi/js/vendor/respond.min.js"></script>
+    <![endif]-->
+</head>
+<body>
+<div class="login">
+    <div class="login-screen">
+        <div class="login-icon">
+            <img src="faltUi/img/login/icon.png" alt="Welcome to Mail App">
+            <h4>Welcome  <small></small></h4>
+        </div>
+        <% for(var i in messages) { %>
+        <div class="flash"><%= messages[i] %></div>
+        <% } %>
+        <form action="/signup" class="form-horizontal" method="post" role="form">
+            <div class="login-form">
+                <div class="form-group register-group">
+                    <label class="col-sm-4 control-label" >First Name:</label>
+                    <div class="col-sm-8">
+                        <input type="text" name="firstName" class="form-control" />
+                    </div>
+                </div>
+                <div class="form-group register-group">
+                    <label class="col-sm-4 control-label">Last Name:</label>
+                    <div class="col-sm-8">
+                        <input type="text" name="lastName" class="form-control"/>
+                    </div>
+                </div>
+                <div class="form-group register-group">
+                    <label class="col-sm-4 control-label">Email:</label>
+                    <div class="col-sm-8">
+                        <input type="email" name="email" class="form-control"/>
+                    </div>
+                </div>
+                <div class="form-group register-group">
+                    <label class="col-sm-4 control-label">Username:</label>
+                    <div class="col-sm-8">
+                        <input type="text" name="username" class="form-control"/>
+                    </div>
+                </div>
+                <div class="form-group register-group">
+                    <label class="col-sm-4 control-label">Password:</label>
+                    <div class="col-sm-8">
+                        <input type="password" name="password" class="form-control"/>
+                    </div>
+                </div>
+                <div class="form-group register-group">
+                    <div class="col-sm-8 pull-right">
+
+                        <input type="submit" class="btn btn-primary btn-block" value="Register" />
+                        <a href="/signin" class="btn btn-default btn-block">  Sign In  </a>
+                    </div>
+                </div>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+
+</body>
+</html>
