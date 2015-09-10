@@ -1,6 +1,6 @@
 angular.module('blogArticle').controller('ArticlesController', ['$scope',
-    '$routeParams', '$location', 'Articles','ArticlesUrl',
-    function($scope, $routeParams, $location, Articles,ArticlesUrl)
+    '$routeParams', '$location', 'Articles','ArticlesUrl','commonServices',
+    function($scope, $routeParams, $location, Articles,ArticlesUrl,commonServices)
     {
         $scope.setUrl = function(id){
             ArticlesUrl.url = '/articles/'+id;
@@ -14,6 +14,8 @@ angular.module('blogArticle').controller('ArticlesController', ['$scope',
                 articleId: $routeParams.articleId
             });
         };
+
+        $scope.commonServices = commonServices;
     }
 ]);
 

@@ -16,14 +16,14 @@
   </div>
 </header>
 <!-- row start -->
-<div class="container main slideInLeft animated">
+<div class="container main fadeIn animated">
     <div class="h-wrap">
       <div class="line"></div>
       <h1 class="text-left list-h1">Article</h1>
     </div>
     <div class="article-list-wrap" ng-controller="ArticlesController" data-ng-init="find()">
       <div class="row article-list-item" data-ng-repeat="article in articles">
-        <h3><a data-ng-bind="article.title" href="#!/articles/{{article._id}}" ng-click="setUrl(article._id)"></a> <span class="comment-count pull-right"><span id = "sourceId::{{article._id}}" class = "cy_cmt_count" ></span></span></h3>
+        <h3><a data-ng-bind="article.title" href="#!/articles/{{article._id}}" ng-click="setUrl(article._id);commonServices.showLightBox()"></a> <span class="comment-count pull-right"><span id = "sourceId::{{article._id}}" class = "cy_cmt_count" ></span></span></h3>
         <p class="content" data-ng-bind="article.summary"></p>
         <p class="parm"><small class="pull-left">Created By {{article.creator.fullName}}</small><small class="pull-right" data-ng-bind="article.created | date:'medium'"></small></p>
       </div>
@@ -39,7 +39,7 @@
 <!-- article end -->
 
 <!-- lightbox start -->
-<light-box class="light-box"></light-box>
+<light-box></light-box>
 <!-- lightbox end -->
 </body>
 
@@ -56,7 +56,9 @@
 <script src="/blog/articles/services/blog.articles.client.service.js"></script>
 <script src="/blog/articles/controllers/blog.articles.client.controller.js"></script>
 <script src="/blog/articles/config/blog.articles.client.routes.js"></script>
-<script src="/blog/blog.application.js"></script>
 
+<script src="/blog/blog.application.js"></script>
+<script src="/blog/blog.common.services.js"></script>
+<script src="/blog/blog.common.directives.js"></script>
 
 </html>

@@ -3,6 +3,9 @@ body{
     padding:0;
     font-size:14px;
 }
+iframe{
+    border:none;
+}
 .jumbotron{
     background:none;
 }
@@ -135,13 +138,13 @@ p.introduction{
     width:100%;
     height:100%;
     top:0;
-    background-color:#fefefe;
+    z-index:11;
 }
 .article-detail-wrap.ng-enter{
-    animation:rotateInDownLeft .5s;
+    animation:fadeIn .5s;
 }
 .article-detail-wrap.ng-leave{
-    animation:rotateOutUpRight .5s;
+    animation:fadeOut .5s;
 }
 
 
