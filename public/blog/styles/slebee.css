@@ -2,12 +2,10 @@ body{
     margin:0;
     padding:0;
     font-size:14px;
+    overflow-x:hidden;
 }
 iframe{
     border:none;
-}
-.jumbotron{
-    background:none;
 }
 header{
     padding-top:30px;
@@ -85,6 +83,7 @@ p.introduction{
 .article-list-item{
     padding:0 0 20px 0;
     border-bottom:1px dotted #ccc;
+    opacity:0;
 }
 
 .article-list-item h3>a{
@@ -223,4 +222,22 @@ a.close{
     left:0;
     top:0;
     z-index:10;
+}
+.sSlideInUp{
+    animation:sSlideInUp 1s;
+    animation-fill-mode:forwards;
+}
+@keyframes sSlideInUp {
+    from {
+        -webkit-transform: translate3d(0, 100%, 0);
+        transform: translate3d(0, 100%, 0);
+        visibility: visible;
+        opacity:0
+    }
+
+    100% {
+        -webkit-transform: translate3d(0, 0, 0);
+        transform: translate3d(0, 0, 0);
+        opacity:1
+    }
 }

@@ -16,13 +16,13 @@
   </div>
 </header>
 <!-- row start -->
-<div class="container main fadeIn animated">
+<div class="container main">
     <div class="h-wrap">
       <div class="line"></div>
       <h1 class="text-left list-h1">Article</h1>
     </div>
-    <div class="article-list-wrap" ng-controller="ArticlesController" data-ng-init="find()">
-      <div class="row article-list-item" data-ng-repeat="article in articles">
+    <div class="article-list-wrap" ng-controller="ArticlesController" data-ng-init="find();times=0.1">
+      <div class="row article-list-item sSlideInUp animated" data-ng-repeat="article in articles" style="animation-delay:{{$index*times}}s;">
         <h3><a data-ng-bind="article.title" href="#!/articles/{{article._id}}" ng-click="setUrl(article._id);commonServices.showLightBox()"></a> <span class="comment-count pull-right"><span id = "sourceId::{{article._id}}" class = "cy_cmt_count" ></span></span></h3>
         <p class="content" data-ng-bind="article.summary"></p>
         <p class="parm"><small class="pull-left">Created By {{article.creator.fullName}}</small><small class="pull-right" data-ng-bind="article.created | date:'medium'"></small></p>
