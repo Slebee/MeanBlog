@@ -10,6 +10,6 @@ angular.module('blogArticle').factory('Articles',['$resource',function($resource
 
 angular.module('blogArticle').factory('ArticlesUrl',function(){
     return {
-        url: window. location.href.substring(location.href.indexOf("/articles")+1)
+        url: window.location.href.substring(location.href.indexOf("/articles")+1)
     }
 });

@@ -18,10 +18,7 @@ angular.module('blog').directive('close',function(){
             $scope.commonServices = commonServices;
         }],
         link:function(scope,element,attrs){
-            $(element).on('click',function(){
-                $('body').css('overflow','visible');
-            })
-        }
 
+        }
     }
 });

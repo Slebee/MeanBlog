@@ -54,7 +54,9 @@ p.introduction{
     width:100%;
     height:100%;
 }
-
+.no-scroll{
+    overflow:hidden;
+}
 /*main*/
 .main{
     margin-top:50px;

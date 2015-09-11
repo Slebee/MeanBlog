@@ -7,7 +7,7 @@
   <link href="//cdn.bootcss.com/animate.css/3.4.0/animate.min.css" rel="stylesheet">
   <link href="/blog/styles/slebee.css" rel="stylesheet">
 </head>
-<body>
+<body ng-controller="mainController" ng-class="{true:'no-scroll',false:''}[data.lightBoxShow]">
 <header class="jumbotron rubberBand animated">
   <div class="container text-center">
     <div class="avatar"></div>
@@ -60,5 +60,5 @@
 <script src="/blog/blog.application.js"></script>
 <script src="/blog/blog.common.services.js"></script>
 <script src="/blog/blog.common.directives.js"></script>
-
+<script src="/blog/blog.common.controllers.js"></script>
 </html>
