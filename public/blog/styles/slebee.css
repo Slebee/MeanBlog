@@ -141,12 +141,14 @@ p.introduction{
     top:0;
     z-index:11;
 }
+/*
 .article-detail-wrap.ng-enter{
-    animation:fadeIn .5s;
-}
+    animation:slideInLeft .5s;
+}*/
 .article-detail-wrap.ng-leave{
     animation:fadeOut .5s;
 }
+
 
 
 .article-detail-box{
@@ -221,7 +223,59 @@ a.close{
     height:100%;
     left:0;
     top:0;
-    z-index:10;
+    -webkit-transition: all .5s;
+    -moz-transition: all .5s;
+    -ms-transition: all .5s;
+    -o-transition: all .5s;
+    transition: all .5s;
+    z-index:-1;
+}
+@-webkit-keyframes sFadeIn {
+    from {
+        opacity: 0;
+    }
+
+    100% {
+        opacity: .5;
+    }
+}
+
+@keyframes sFadeIn {
+    from {
+        opacity: 0;
+    }
+
+    100% {
+        opacity: .5;
+    }
+}
+@-webkit-keyframes sFadeOut {
+    from {
+        opacity: .5;
+    }
+
+    100% {
+        opacity: 0;
+    }
+}
+
+@keyframes sFadeOut {
+    from {
+        opacity: .5;
+    }
+
+    100% {
+        opacity: 0;
+    }
+}
+
+.sFadeIn {
+    -webkit-animation-name: sFadeIn;
+    animation-name: sFadeIn;
+}
+.sFadeOut {
+    -webkit-animation-name: sFadeOut;
+    animation-name: sFadeOut;
 }
 .sSlideInUp{
     animation:sSlideInUp 1s;

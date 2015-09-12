@@ -7,7 +7,7 @@
   <link href="//cdn.bootcss.com/animate.css/3.4.0/animate.min.css" rel="stylesheet">
   <link href="/blog/styles/slebee.css" rel="stylesheet">
 </head>
-<body ng-controller="mainController" ng-class="{true:'no-scroll',false:''}[data.lightBoxShow]">
+<body ng-controller="mainController">
 <header class="jumbotron rubberBand animated">
   <div class="container text-center">
     <div class="avatar"></div>
@@ -23,7 +23,7 @@
     </div>
     <div class="article-list-wrap" ng-controller="ArticlesController" data-ng-init="find();times=0.1">
       <div class="row article-list-item sSlideInUp animated" data-ng-repeat="article in articles" style="animation-delay:{{$index*times}}s;">
-        <h3><a data-ng-bind="article.title" href="#!/articles/{{article._id}}" ng-click="setUrl(article._id);commonServices.showLightBox()"></a> <span class="comment-count pull-right"><span id = "sourceId::{{article._id}}" class = "cy_cmt_count" ></span></span></h3>
+        <h3><a data-ng-bind="article.title" href="#!/articles/{{article._id}}" ng-click="setUrl(article._id)"></a> <span class="comment-count pull-right"><span id = "sourceId::{{article._id}}" class = "cy_cmt_count" ></span></span></h3>
         <p class="content" data-ng-bind="article.summary"></p>
         <p class="parm"><small class="pull-left">Created By {{article.creator.fullName}}</small><small class="pull-right" data-ng-bind="article.created | date:'medium'"></small></p>
       </div>
@@ -43,9 +43,6 @@
 <!-- lightbox end -->
 </body>
 
-
-
-
 <script src="/lib/jquery-2.1.4.min.js"></script>
 <script src="/lib/angular/angular.js"></script>
 <script src="/lib/angular-route/angular-route.js"></script>
@@ -61,4 +58,11 @@
 <script src="/blog/blog.common.services.js"></script>
 <script src="/blog/blog.common.directives.js"></script>
 <script src="/blog/blog.common.controllers.js"></script>
+
+<script>
+  window.onhashchange = function(){
+    var reg = /articles/g;
+    reg.test( window.location.href ) ? setTimeout(function(){$('body').addClass('no-scroll')},0): setTimeout(function(){$('body').removeClass('no-scroll')},0);
+  }
+</script>
 </html>
