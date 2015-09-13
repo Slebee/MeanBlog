@@ -2,13 +2,10 @@
     <h1>New Article</h1>
     <form data-ng-submit="create()" novalidate>
         <div>
-            <label for="title">Title</label>
-            <div>
-                <input type="text" data-ng-model="title" id="title" placeholder="Title" required>
-            </div>
+            <input type="text" data-ng-model="title" id="title" placeholder="这里是文章标题啦" required>
         </div>
         <div>
-            <script id="editor" type="text/plain" style="width:1024px;height:500px;"></script>
+            <div id="editor" style="width:1024px;height:500px;"></div>
         </div>
         <div>
             <input type="submit">
@@ -19,8 +16,9 @@
         </div>
     </form>
 </create-Article>
+<script type="text/javascript" charset="utf-8" src="/ueditor/ueditor.config.js"></script>
+<script type="text/javascript" charset="utf-8" src="/ueditor/ueditor.all.min.js"> </script>
 <script>
-    var ue = UE.getEditor('editor');
-    console.log(ue)
+   UE.getEditor('editor');
 </script>
 
