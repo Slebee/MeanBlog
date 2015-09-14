@@ -7,7 +7,12 @@ module.exports = function( app,ueditor,path ){
             console.log(foo.filename); // exp.png
             console.log(foo.encoding); // 7bit
             console.log(foo.mimetype); // image/png
-            res.ue_up(img_url);
+            if(!/multipart\/form-data/i.test(req.headers['content-type'])){
+                return res.end('wrong');
+            }else{
+                res.ue_up(img_url);
+            }
+
         }
         else if (req.query.action === 'listimage') {
             var dir_url = '/upload/images/';
