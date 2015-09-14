@@ -1,20 +1,22 @@
 var config = require('./config'),
     http = require('http'),
     express=require('express'),
-    morgan = require('morgan'), //Ìá¹©ÈÕÖ¾ÖĞ¼ä¼ş
-    compress = require('compression'), //ÏìÓ¦ÄÚÈİÑ¹Ëõ¹¦ÄÜ
-    bodyParser = require('body-parser'), //°üº¬¼¸¸ö´¦ÀíÇëÇóÊı¾İµÄÖĞ¼ä¼ş
-    methodOverride = require('method-override'), //HTTP  DELETE ºÍ PUT Á½¸öÒÅÁô·½·¨µÄÖ§³Ö
+    morgan = require('morgan'), //ï¿½á¹©ï¿½ï¿½Ö¾ï¿½Ğ¼ï¿½ï¿½
+    compress = require('compression'), //ï¿½ï¿½Ó¦ï¿½ï¿½ï¿½ï¿½Ñ¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+    bodyParser = require('body-parser'), //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½İµï¿½ï¿½Ğ¼ï¿½ï¿½
+    methodOverride = require('method-override'), //HTTP  DELETE ï¿½ï¿½ PUT ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö§ï¿½ï¿½
     socketio = require('socket.io'),
     session = require('express-session'),
     MongoStore = require('connect-mongo')(session),
     passport =require('passport'),
-    flash = require('connect-flash');
+    flash = require('connect-flash'),
+    ueditor = require('ueditor'),
+    path = require('path');
 module.exports = function(db){
     var app = express();
     var server = http.createServer(app);
     var io = socketio.listen(server);
-    //¿ª·¢»·¾³--¡·Ê¹ÓÃÈÕÖ¾ÖĞ¼ä¼ş £ºÉú²ú»·¾³--¡·Ê¹ÓÃÏìÓ¦ÄÚÈİÑ¹ËõÖĞ¼ä¼ş
+    //
     if (process.env.NODE_ENV === 'development'){
         app.use(morgan('dev'));
     }else if (process.env.NODE_ENV === 'production'){
@@ -42,19 +44,18 @@ module.exports = function(db){
     app.set('view engine', 'ejs');
 
     app.use(flash());
-    app.use(passport.initialize());//Æô¶¯passport
-    app.use(passport.session());//×·×ÙÓÃ»§»á»°µÄÖĞ¼ä¼ş
+    app.use(passport.initialize());//ï¿½ï¿½ï¿½ï¿½passport
+    app.use(passport.session());//×·ï¿½ï¿½ï¿½Ã»ï¿½ï¿½á»°ï¿½ï¿½ï¿½Ğ¼ï¿½ï¿½
 
     require('../app/routes/index.server.routes.js')(app);
     require('../app/routes/admin.server.routes.js')(app);
     require('../app/routes/users.server.routes.js')(app);
     require('../app/routes/articles.server.routes.js')(app);
-
-    /*express.static() ÖĞ¼ä¼şº¯ÊıĞèÒªÒ»¸ö²ÎÊı£¬ÓÃÓÚÖ¸¶¨¾²Ì¬ÎÄ¼şËùÔÚµÄÎÄ¼ş¼ĞÂ·¾¶¡£×¢Òâ
-    ÖĞ¼ä¼şÆô¶¯µÄÎ»ÖÃ£¬ËüÎ»ÓÚÂ·ÓÉÖĞ¼ä¼şÖ®ÏÂ£¬¼´ÏÈÖ´ĞĞÂ·ÓÉÂß¼­¡£Â·ÓÉÂß¼­Ã»ÓĞÏìÓ¦ÇëÇóµÄ»°£¬
-    ÔÙÓÉ¾²Ì¬ÎÄ¼ş·şÎñ½øĞĞ´¦Àí¡£ ÕâÑù×öµÄÔ­ÒòÊÇ£¬ ¾²Ì¬ÎÄ¼ş·şÎñÔÚÎÄ¼şÏµÍ³ÖĞ½øĞĞÂ·¾¶ºÍÎÄ¼ş¼ìË÷£¬
-    ĞèÒªÏûºÄÊ±¼äÔÚI/O²Ù×÷ÉÏ£¬Õâ±ã»áÔö¼ÓÒ»°ãµÄÂ·ÓÉÖĞ¼ä¼şµÄÏìÓ¦Ê±¼ä¡£*/
-    app.use(express.static('./public'));
+    require('../app/plugins/ueditor.server.js')(app,ueditor,path);
     require('./socketio')(server, io, mongoStore);
+
+    app.use(express.static('./public'));
+
+
     return server;
 };

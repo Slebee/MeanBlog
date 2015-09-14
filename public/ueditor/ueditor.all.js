@@ -1,3 +1,9 @@
+/*!
+ * UEditor
+ * version: ueditor
+ * build: Tue Aug 25 2015 15:23:01 GMT+0800 (CST)
+ */
+
 (function(){
 
 // editor.js
@@ -9526,6 +9532,7 @@ var htmlparser = UE.htmlparser = function (htmlstr,ignoreBlank) {
     return root;
 };
 
+
 // core/filternode.js
 /**
  * UE过滤节点的静态方法
@@ -10747,6 +10754,156 @@ UE.plugins['autotypeset'] = function(){
 
 
 
+// plugins/autosubmit.js
+/**
+ * 快捷键提交
+ * @file
+ * @since 1.2.6.1
+ */
+
+/**
+ * 提交表单
+ * @command autosubmit
+ * @method execCommand
+ * @param { String } cmd 命令字符串
+ * @example
+ * ```javascript
+ * editor.execCommand( 'autosubmit' );
+ * ```
+ */
+
+UE.plugin.register('autosubmit',function(){
+    return {
+        shortcutkey:{
+            "autosubmit":"ctrl+13" //手动提交
+        },
+        commands:{
+            'autosubmit':{
+                execCommand:function () {
+                    var me=this,
+                        form = domUtils.findParentByTagName(me.iframe,"form", false);
+                    if (form){
+                        if(me.fireEvent("beforesubmit")===false){
+                            return;
+                        }
+                        me.sync();
+                        form.submit();
+                    }
+                }
+            }
+        }
+    }
+});
+
+// plugins/background.js
+/**
+ * 背景插件，为UEditor提供设置背景功能
+ * @file
+ * @since 1.2.6.1
+ */
+UE.plugin.register('background', function () {
+    var me = this,
+        cssRuleId = 'editor_background',
+        isSetColored,
+        reg = new RegExp('body[\\s]*\\{(.+)\\}', 'i');
+
+    function stringToObj(str) {
+        var obj = {}, styles = str.split(';');
+        utils.each(styles, function (v) {
+            var index = v.indexOf(':'),
+                key = utils.trim(v.substr(0, index)).toLowerCase();
+            key && (obj[key] = utils.trim(v.substr(index + 1) || ''));
+        });
+        return obj;
+    }
+
+    function setBackground(obj) {
+        if (obj) {
+            var styles = [];
+            for (var name in obj) {
+                if (obj.hasOwnProperty(name)) {
+                    styles.push(name + ":" + obj[name] + '; ');
+                }
+            }
+            utils.cssRule(cssRuleId, styles.length ? ('body{' + styles.join("") + '}') : '', me.document);
+        } else {
+            utils.cssRule(cssRuleId, '', me.document)
+        }
+    }
+    //重写editor.hasContent方法
+
+    var orgFn = me.hasContents;
+    me.hasContents = function(){
+        if(me.queryCommandValue('background')){
+            return true
+        }
+        return orgFn.apply(me,arguments);
+    };
+    return {
+        bindEvents: {
+            'getAllHtml': function (type, headHtml) {
+                var body = this.body,
+                    su = domUtils.getComputedStyle(body, "background-image"),
+                    url = "";
+                if (su.indexOf(me.options.imagePath) > 0) {
+                    url = su.substring(su.indexOf(me.options.imagePath), su.length - 1).replace(/"|\(|\)/ig, "");
+                } else {
+                    url = su != "none" ? su.replace(/url\("?|"?\)/ig, "") : "";
+                }
+                var html = '<style type="text/css">body{';
+                var bgObj = {
+                    "background-color": domUtils.getComputedStyle(body, "background-color") || "#ffffff",
+                    'background-image': url ? 'url(' + url + ')' : '',
+                    'background-repeat': domUtils.getComputedStyle(body, "background-repeat") || "",
+                    'background-position': browser.ie ? (domUtils.getComputedStyle(body, "background-position-x") + " " + domUtils.getComputedStyle(body, "background-position-y")) : domUtils.getComputedStyle(body, "background-position"),
+                    'height': domUtils.getComputedStyle(body, "height")
+                };
+                for (var name in bgObj) {
+                    if (bgObj.hasOwnProperty(name)) {
+                        html += name + ":" + bgObj[name] + "; ";
+                    }
+                }
+                html += '}</style> ';
+                headHtml.push(html);
+            },
+            'aftersetcontent': function () {
+                if(isSetColored == false) setBackground();
+            }
+        },
+        inputRule: function (root) {
+            isSetColored = false;
+            utils.each(root.getNodesByTagName('p'), function (p) {
+                var styles = p.getAttr('data-background');
+                if (styles) {
+                    isSetColored = true;
+                    setBackground(stringToObj(styles));
+                    p.parentNode.removeChild(p);
+                }
+            })
+        },
+        outputRule: function (root) {
+            var me = this,
+                styles = (utils.cssRule(cssRuleId, me.document) || '').replace(/[\n\r]+/g, '').match(reg);
+            if (styles) {
+                root.appendChild(UE.uNode.createElement('<p style="display:none;" data-background="' + utils.trim(styles[1].replace(/"/g, '').replace(/[\s]+/g, ' ')) + '"><br/></p>'));
+            }
+        },
+        commands: {
+            'background': {
+                execCommand: function (cmd, obj) {
+                    setBackground(obj);
+                },
+                queryCommandValue: function () {
+                    var me = this,
+                        styles = (utils.cssRule(cssRuleId, me.document) || '').replace(/[\n\r]+/g, '').match(reg);
+                    return styles ? stringToObj(styles[1]) : null;
+                },
+                notNeedUndo: true
+            }
+        }
+    }
+});
+
 // plugins/image.js
 /**
  * 图片插入、排版插件
@@ -11815,6 +11972,41 @@ UE.plugins['link'] = function(){
     };
 };
 
+// plugins/iframe.js
+///import core
+///import plugins\inserthtml.js
+///commands 插入框架
+///commandsName  InsertFrame
+///commandsTitle  插入Iframe
+///commandsDialog  dialogs\insertframe
+
+UE.plugins['insertframe'] = function() {
+   var me =this;
+    function deleteIframe(){
+        me._iframe && delete me._iframe;
+    }
+
+    me.addListener("selectionchange",function(){
+        deleteIframe();
+    });
+
+};
+
+
+
+// plugins/scrawl.js
+///import core
+///commands 涂鸦
+///commandsName  Scrawl
+///commandsTitle  涂鸦
+///commandsDialog  dialogs\scrawl
+UE.commands['scrawl'] = {
+    queryCommandState : function(){
+        return ( browser.ie && browser.version  <= 8 ) ? -1 :0;
+    }
+};
+
+
 // plugins/removeformat.js
 /**
  * 清除格式
@@ -12234,6 +12426,435 @@ UE.commands['tolowercase'] = {
 
 
 
+// plugins/indent.js
+/**
+ * 首行缩进
+ * @file
+ * @since 1.2.6.1
+ */
+
+/**
+ * 缩进
+ * @command indent
+ * @method execCommand
+ * @param { String } cmd 命令字符串
+ * @example
+ * ```javascript
+ * editor.execCommand( 'indent' );
+ * ```
+ */
+UE.commands['indent'] = {
+    execCommand : function() {
+         var me = this,value = me.queryCommandState("indent") ? "0em" : (me.options.indentValue || '2em');
+         me.execCommand('Paragraph','p',{style:'text-indent:'+ value});
+    },
+    queryCommandState : function() {
+        var pN = domUtils.filterNodeList(this.selection.getStartElementPath(),'p h1 h2 h3 h4 h5 h6');
+        return pN && pN.style.textIndent && parseInt(pN.style.textIndent) ?  1 : 0;
+    }
+
+};
+
+
+// plugins/print.js
+/**
+ * 打印
+ * @file
+ * @since 1.2.6.1
+ */
+
+/**
+ * 打印
+ * @command print
+ * @method execCommand
+ * @param { String } cmd 命令字符串
+ * @example
+ * ```javascript
+ * editor.execCommand( 'print' );
+ * ```
+ */
+UE.commands['print'] = {
+    execCommand : function(){
+        this.window.print();
+    },
+    notNeedUndo : 1
+};
+
+
+
+// plugins/preview.js
+/**
+ * 预览
+ * @file
+ * @since 1.2.6.1
+ */
+
+/**
+ * 预览
+ * @command preview
+ * @method execCommand
+ * @param { String } cmd 命令字符串
+ * @example
+ * ```javascript
+ * editor.execCommand( 'preview' );
+ * ```
+ */
+UE.commands['preview'] = {
+    execCommand : function(){
+        var w = window.open('', '_blank', ''),
+            d = w.document;
+        d.open();
+        d.write('<!DOCTYPE html><html><head><meta charset="utf-8"/><script src="'+this.options.UEDITOR_HOME_URL+'ueditor.parse.js"></script><script>' +
+            "setTimeout(function(){uParse('div',{rootPath: '"+ this.options.UEDITOR_HOME_URL +"'})},300)" +
+            '</script></head><body><div>'+this.getContent(null,null,true)+'</div></body></html>');
+        d.close();
+    },
+    notNeedUndo : 1
+};
+
+
+// plugins/selectall.js
+/**
+ * 全选
+ * @file
+ * @since 1.2.6.1
+ */
+
+/**
+ * 选中所有内容
+ * @command selectall
+ * @method execCommand
+ * @param { String } cmd 命令字符串
+ * @example
+ * ```javascript
+ * editor.execCommand( 'selectall' );
+ * ```
+ */
+UE.plugins['selectall'] = function(){
+    var me = this;
+    me.commands['selectall'] = {
+        execCommand : function(){
+            //去掉了原生的selectAll,因为会出现报错和当内容为空时，不能出现闭合状态的光标
+            var me = this,body = me.body,
+                range = me.selection.getRange();
+            range.selectNodeContents(body);
+            if(domUtils.isEmptyBlock(body)){
+                //opera不能自动合并到元素的里边，要手动处理一下
+                if(browser.opera && body.firstChild && body.firstChild.nodeType == 1){
+                    range.setStartAtFirst(body.firstChild);
+                }
+                range.collapse(true);
+            }
+            range.select(true);
+        },
+        notNeedUndo : 1
+    };
+
+
+    //快捷键
+    me.addshortcutkey({
+         "selectAll" : "ctrl+65"
+    });
+};
+
+
+// plugins/paragraph.js
+/**
+ * 段落样式
+ * @file
+ * @since 1.2.6.1
+ */
+
+/**
+ * 段落格式
+ * @command paragraph
+ * @method execCommand
+ * @param { String } cmd 命令字符串
+ * @param {String}   style               标签值为：'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'
+ * @param {Object}   attrs               标签的属性
+ * @example
+ * ```javascript
+ * editor.execCommand( 'Paragraph','h1','{
+ *     class:'test'
+ * }' );
+ * ```
+ */
+
+/**
+ * 返回选区内节点标签名
+ * @command paragraph
+ * @method queryCommandValue
+ * @param { String } cmd 命令字符串
+ * @return { String } 节点标签名
+ * @example
+ * ```javascript
+ * editor.queryCommandValue( 'Paragraph' );
+ * ```
+ */
+
+UE.plugins['paragraph'] = function() {
+    var me = this,
+        block = domUtils.isBlockElm,
+        notExchange = ['TD','LI','PRE'],
+
+        doParagraph = function(range,style,attrs,sourceCmdName){
+            var bookmark = range.createBookmark(),
+                filterFn = function( node ) {
+                    return   node.nodeType == 1 ? node.tagName.toLowerCase() != 'br' &&  !domUtils.isBookmarkNode(node) : !domUtils.isWhitespace( node );
+                },
+                para;
+
+            range.enlarge( true );
+            var bookmark2 = range.createBookmark(),
+                current = domUtils.getNextDomNode( bookmark2.start, false, filterFn ),
+                tmpRange = range.cloneRange(),
+                tmpNode;
+            while ( current && !(domUtils.getPosition( current, bookmark2.end ) & domUtils.POSITION_FOLLOWING) ) {
+                if ( current.nodeType == 3 || !block( current ) ) {
+                    tmpRange.setStartBefore( current );
+                    while ( current && current !== bookmark2.end && !block( current ) ) {
+                        tmpNode = current;
+                        current = domUtils.getNextDomNode( current, false, null, function( node ) {
+                            return !block( node );
+                        } );
+                    }
+                    tmpRange.setEndAfter( tmpNode );
+                    
+                    para = range.document.createElement( style );
+                    if(attrs){
+                        domUtils.setAttributes(para,attrs);
+                        if(sourceCmdName && sourceCmdName == 'customstyle' && attrs.style){
+                            para.style.cssText = attrs.style;
+                        }
+                    }
+                    para.appendChild( tmpRange.extractContents() );
+                    //需要内容占位
+                    if(domUtils.isEmptyNode(para)){
+                        domUtils.fillChar(range.document,para);
+                        
+                    }
+
+                    tmpRange.insertNode( para );
+
+                    var parent = para.parentNode;
+                    //如果para上一级是一个block元素且不是body,td就删除它
+                    if ( block( parent ) && !domUtils.isBody( para.parentNode ) && utils.indexOf(notExchange,parent.tagName)==-1) {
+                        //存储dir,style
+                        if(!(sourceCmdName && sourceCmdName == 'customstyle')){
+                            parent.getAttribute('dir') && para.setAttribute('dir',parent.getAttribute('dir'));
+                            //trace:1070
+                            parent.style.cssText && (para.style.cssText = parent.style.cssText + ';' + para.style.cssText);
+                            //trace:1030
+                            parent.style.textAlign && !para.style.textAlign && (para.style.textAlign = parent.style.textAlign);
+                            parent.style.textIndent && !para.style.textIndent && (para.style.textIndent = parent.style.textIndent);
+                            parent.style.padding && !para.style.padding && (para.style.padding = parent.style.padding);
+                        }
+
+                        //trace:1706 选择的就是h1-6要删除
+                        if(attrs && /h\d/i.test(parent.tagName) && !/h\d/i.test(para.tagName) ){
+                            domUtils.setAttributes(parent,attrs);
+                            if(sourceCmdName && sourceCmdName == 'customstyle' && attrs.style){
+                                parent.style.cssText = attrs.style;
+                            }
+                            domUtils.remove(para,true);
+                            para = parent;
+                        }else{
+                            domUtils.remove( para.parentNode, true );
+                        }
+
+                    }
+                    if(  utils.indexOf(notExchange,parent.tagName)!=-1){
+                        current = parent;
+                    }else{
+                       current = para;
+                    }
+
+
+                    current = domUtils.getNextDomNode( current, false, filterFn );
+                } else {
+                    current = domUtils.getNextDomNode( current, true, filterFn );
+                }
+            }
+            return range.moveToBookmark( bookmark2 ).moveToBookmark( bookmark );
+        };
+    me.setOpt('paragraph',{'p':'', 'h1':'', 'h2':'', 'h3':'', 'h4':'', 'h5':'', 'h6':''});
+    me.commands['paragraph'] = {
+        execCommand : function( cmdName, style,attrs,sourceCmdName ) {
+            var range = this.selection.getRange();
+             //闭合时单独处理
+            if(range.collapsed){
+                var txt = this.document.createTextNode('p');
+                range.insertNode(txt);
+                //去掉冗余的fillchar
+                if(browser.ie){
+                    var node = txt.previousSibling;
+                    if(node && domUtils.isWhitespace(node)){
+                        domUtils.remove(node);
+                    }
+                    node = txt.nextSibling;
+                    if(node && domUtils.isWhitespace(node)){
+                        domUtils.remove(node);
+                    }
+                }
+
+            }
+            range = doParagraph(range,style,attrs,sourceCmdName);
+            if(txt){
+                range.setStartBefore(txt).collapse(true);
+                pN = txt.parentNode;
+
+                domUtils.remove(txt);
+
+                if(domUtils.isBlockElm(pN)&&domUtils.isEmptyNode(pN)){
+                    domUtils.fillNode(this.document,pN);
+                }
+
+            }
+
+            if(browser.gecko && range.collapsed && range.startContainer.nodeType == 1){
+                var child = range.startContainer.childNodes[range.startOffset];
+                if(child && child.nodeType == 1 && child.tagName.toLowerCase() == style){
+                    range.setStart(child,0).collapse(true);
+                }
+            }
+            //trace:1097 原来有true，原因忘了，但去了就不能清除多余的占位符了
+            range.select();
+
+
+            return true;
+        },
+        queryCommandValue : function() {
+            var node = domUtils.filterNodeList(this.selection.getStartElementPath(),'p h1 h2 h3 h4 h5 h6');
+            return node ? node.tagName.toLowerCase() : '';
+        }
+    };
+};
+
+
+// plugins/directionality.js
+/**
+ * 设置文字输入的方向的插件
+ * @file
+ * @since 1.2.6.1
+ */
+(function() {
+    var block = domUtils.isBlockElm ,
+        getObj = function(editor){
+//            var startNode = editor.selection.getStart(),
+//                parents;
+//            if ( startNode ) {
+//                //查找所有的是block的父亲节点
+//                parents = domUtils.findParents( startNode, true, block, true );
+//                for ( var i = 0,ci; ci = parents[i++]; ) {
+//                    if ( ci.getAttribute( 'dir' ) ) {
+//                        return ci;
+//                    }
+//                }
+//            }
+            return domUtils.filterNodeList(editor.selection.getStartElementPath(),function(n){return n && n.nodeType == 1 && n.getAttribute('dir')});
+
+        },
+        doDirectionality = function(range,editor,forward){
+            
+            var bookmark,
+                filterFn = function( node ) {
+                    return   node.nodeType == 1 ? !domUtils.isBookmarkNode(node) : !domUtils.isWhitespace(node);
+                },
+
+                obj = getObj( editor );
+
+            if ( obj && range.collapsed ) {
+                obj.setAttribute( 'dir', forward );
+                return range;
+            }
+            bookmark = range.createBookmark();
+            range.enlarge( true );
+            var bookmark2 = range.createBookmark(),
+                current = domUtils.getNextDomNode( bookmark2.start, false, filterFn ),
+                tmpRange = range.cloneRange(),
+                tmpNode;
+            while ( current &&  !(domUtils.getPosition( current, bookmark2.end ) & domUtils.POSITION_FOLLOWING) ) {
+                if ( current.nodeType == 3 || !block( current ) ) {
+                    tmpRange.setStartBefore( current );
+                    while ( current && current !== bookmark2.end && !block( current ) ) {
+                        tmpNode = current;
+                        current = domUtils.getNextDomNode( current, false, null, function( node ) {
+                            return !block( node );
+                        } );
+                    }
+                    tmpRange.setEndAfter( tmpNode );
+                    var common = tmpRange.getCommonAncestor();
+                    if ( !domUtils.isBody( common ) && block( common ) ) {
+                        //遍历到了block节点
+                        common.setAttribute( 'dir', forward );
+                        current = common;
+                    } else {
+                        //没有遍历到，添加一个block节点
+                        var p = range.document.createElement( 'p' );
+                        p.setAttribute( 'dir', forward );
+                        var frag = tmpRange.extractContents();
+                        p.appendChild( frag );
+                        tmpRange.insertNode( p );
+                        current = p;
+                    }
+
+                    current = domUtils.getNextDomNode( current, false, filterFn );
+                } else {
+                    current = domUtils.getNextDomNode( current, true, filterFn );
+                }
+            }
+            return range.moveToBookmark( bookmark2 ).moveToBookmark( bookmark );
+        };
+
+    /**
+     * 文字输入方向
+     * @command directionality
+     * @method execCommand
+     * @param { String } cmdName 命令字符串
+     * @param { String } forward 传入'ltr'表示从左向右输入，传入'rtl'表示从右向左输入
+     * @example
+     * ```javascript
+     * editor.execCommand( 'directionality', 'ltr');
+     * ```
+     */
+
+    /**
+     * 查询当前选区的文字输入方向
+     * @command directionality
+     * @method queryCommandValue
+     * @param { String } cmdName 命令字符串
+     * @return { String } 返回'ltr'表示从左向右输入，返回'rtl'表示从右向左输入
+     * @example
+     * ```javascript
+     * editor.queryCommandValue( 'directionality');
+     * ```
+     */
+    UE.commands['directionality'] = {
+        execCommand : function( cmdName,forward ) {
+            var range = this.selection.getRange();
+            //闭合时单独处理
+            if(range.collapsed){
+                var txt = this.document.createTextNode('d');
+                range.insertNode(txt);
+            }
+            doDirectionality(range,this,forward);
+            if(txt){
+                range.setStartBefore(txt).collapse(true);
+                domUtils.remove(txt);
+            }
+
+            range.select();
+            return true;
+        },
+        queryCommandValue : function() {
+            var node = getObj(this);
+            return node ? node.getAttribute('dir') : 'ltr';
+        }
+    };
+})();
+
+
+
 // plugins/horizontal.js
 /**
  * 插入分割线插件
@@ -12392,6 +13013,106 @@ UE.commands['time'] = UE.commands["date"] = {
         this.execCommand('insertHtml',cmd == "time" ? formatTime(date, format):formatDate(date, format) );
     }
 };
+
+
+// plugins/rowspacing.js
+/**
+ * 段前段后间距插件
+ * @file
+ * @since 1.2.6.1
+ */
+
+/**
+ * 设置段间距
+ * @command rowspacing
+ * @method execCommand
+ * @param { String } cmd 命令字符串
+ * @param { String } value 段间距的值，以px为单位
+ * @param { String } dir 间距位置，top或bottom，分别表示段前和段后
+ * @example
+ * ```javascript
+ * editor.execCommand( 'rowspacing', '10', 'top' );
+ * ```
+ */
+
+UE.plugins['rowspacing'] = function(){
+    var me = this;
+    me.setOpt({
+        'rowspacingtop':['5', '10', '15', '20', '25'],
+        'rowspacingbottom':['5', '10', '15', '20', '25']
+
+    });
+    me.commands['rowspacing'] =  {
+        execCommand : function( cmdName,value,dir ) {
+            this.execCommand('paragraph','p',{style:'margin-'+dir+':'+value + 'px'});
+            return true;
+        },
+        queryCommandValue : function(cmdName,dir) {
+            var pN = domUtils.filterNodeList(this.selection.getStartElementPath(),function(node){return domUtils.isBlockElm(node) }),
+                value;
+            //trace:1026
+            if(pN){
+                value = domUtils.getComputedStyle(pN,'margin-'+dir).replace(/[^\d]/g,'');
+                return !value ? 0 : value;
+            }
+            return 0;
+
+        }
+    };
+};
+
+
+
+
+// plugins/lineheight.js
+/**
+ * 设置行内间距
+ * @file
+ * @since 1.2.6.1
+ */
+UE.plugins['lineheight'] = function(){
+    var me = this;
+    me.setOpt({'lineheight':['1', '1.5','1.75','2', '3', '4', '5']});
+
+    /**
+     * 行距
+     * @command lineheight
+     * @method execCommand
+     * @param { String } cmdName 命令字符串
+     * @param { String } value 传入的行高值， 该值是当前字体的倍数， 例如： 1.5, 1.75
+     * @example
+     * ```javascript
+     * editor.execCommand( 'lineheight', 1.5);
+     * ```
+     */
+    /**
+     * 查询当前选区内容的行高大小
+     * @command lineheight
+     * @method queryCommandValue
+     * @param { String } cmd 命令字符串
+     * @return { String } 返回当前行高大小
+     * @example
+     * ```javascript
+     * editor.queryCommandValue( 'lineheight' );
+     * ```
+     */
+
+    me.commands['lineheight'] =  {
+        execCommand : function( cmdName,value ) {
+            this.execCommand('paragraph','p',{style:'line-height:'+ (value == "1" ? "normal" : value + 'em') });
+            return true;
+        },
+        queryCommandValue : function() {
+            var pN = domUtils.filterNodeList(this.selection.getStartElementPath(),function(node){return domUtils.isBlockElm(node)});
+            if(pN){
+                var value = domUtils.getComputedStyle(pN,'line-height');
+                return value == 'normal' ? 1 : value.replace(/[^\d.]*/ig,"");
+            }
+        }
+    };
+};
+
+
 
 
 // plugins/insertcode.js
@@ -12937,6 +13658,46 @@ UE.plugins['insertcode'] = function() {
 };
 
 
+// plugins/cleardoc.js
+/**
+ * 清空文档插件
+ * @file
+ * @since 1.2.6.1
+ */
+
+/**
+ * 清空文档
+ * @command cleardoc
+ * @method execCommand
+ * @param { String } cmd 命令字符串
+ * @example
+ * ```javascript
+ * //editor 是编辑器实例
+ * editor.execCommand('cleardoc');
+ * ```
+ */
+
+UE.commands['cleardoc'] = {
+    execCommand : function( cmdName) {
+        var me = this,
+            enterTag = me.options.enterTag,
+            range = me.selection.getRange();
+        if(enterTag == "br"){
+            me.body.innerHTML = "<br/>";
+            range.setStart(me.body,0).setCursor();
+        }else{
+            me.body.innerHTML = "<p>"+(ie ? "" : "<br/>")+"</p>";
+            range.setStart(me.body.firstChild,0).setCursor(false,true);
+        }
+        setTimeout(function(){
+            me.fireEvent("clearDoc");
+        },0);
+
+    }
+};
+
+
+
 // plugins/anchor.js
 /**
  * 锚点插件，为UEditor提供插入锚点支持
@@ -13024,6 +13785,259 @@ UE.plugin.register('anchor', function (){
     }
 });
 
+
+// plugins/wordcount.js
+///import core
+///commands 字数统计
+///commandsName  WordCount,wordCount
+///commandsTitle  字数统计
+/*
+ * Created by JetBrains WebStorm.
+ * User: taoqili
+ * Date: 11-9-7
+ * Time: 下午8:18
+ * To change this template use File | Settings | File Templates.
+ */
+
+UE.plugins['wordcount'] = function(){
+    var me = this;
+    me.setOpt('wordCount',true);
+    me.addListener('contentchange',function(){
+        me.fireEvent('wordcount');
+    });
+    var timer;
+    me.addListener('ready',function(){
+        var me = this;
+        domUtils.on(me.body,"keyup",function(evt){
+            var code = evt.keyCode||evt.which,
+                //忽略的按键,ctr,alt,shift,方向键
+                ignores = {"16":1,"18":1,"20":1,"37":1,"38":1,"39":1,"40":1};
+            if(code in ignores) return;
+            clearTimeout(timer);
+            timer = setTimeout(function(){
+                me.fireEvent('wordcount');
+            },200)
+        })
+    });
+};
+
+
+// plugins/pagebreak.js
+/**
+ * 分页功能插件
+ * @file
+ * @since 1.2.6.1
+ */
+UE.plugins['pagebreak'] = function () {
+    var me = this,
+        notBreakTags = ['td'];
+    me.setOpt('pageBreakTag','_ueditor_page_break_tag_');
+
+    function fillNode(node){
+        if(domUtils.isEmptyBlock(node)){
+            var firstChild = node.firstChild,tmpNode;
+
+            while(firstChild && firstChild.nodeType == 1 && domUtils.isEmptyBlock(firstChild)){
+                tmpNode = firstChild;
+                firstChild = firstChild.firstChild;
+            }
+            !tmpNode && (tmpNode = node);
+            domUtils.fillNode(me.document,tmpNode);
+        }
+    }
+    //分页符样式添加
+
+    me.ready(function(){
+        utils.cssRule('pagebreak','.pagebreak{display:block;clear:both !important;cursor:default !important;width: 100% !important;margin:0;}',me.document);
+    });
+    function isHr(node){
+        return node && node.nodeType == 1 && node.tagName == 'HR' && node.className == 'pagebreak';
+    }
+    me.addInputRule(function(root){
+        root.traversal(function(node){
+            if(node.type == 'text' && node.data == me.options.pageBreakTag){
+                var hr = UE.uNode.createElement('<hr class="pagebreak" noshade="noshade" size="5" style="-webkit-user-select: none;">');
+                node.parentNode.insertBefore(hr,node);
+                node.parentNode.removeChild(node)
+            }
+        })
+    });
+    me.addOutputRule(function(node){
+        utils.each(node.getNodesByTagName('hr'),function(n){
+            if(n.getAttr('class') == 'pagebreak'){
+                var txt = UE.uNode.createText(me.options.pageBreakTag);
+                n.parentNode.insertBefore(txt,n);
+                n.parentNode.removeChild(n);
+            }
+        })
+
+    });
+
+    /**
+     * 插入分页符
+     * @command pagebreak
+     * @method execCommand
+     * @param { String } cmd 命令字符串
+     * @remind 在表格中插入分页符会把表格切分成两部分
+     * @remind 获取编辑器内的数据时， 编辑器会把分页符转换成“_ueditor_page_break_tag_”字符串，
+     *          以便于提交数据到服务器端后处理分页。
+     * @example
+     * ```javascript
+     * editor.execCommand( 'pagebreak'); //插入一个hr标签，带有样式类名pagebreak
+     * ```
+     */
+
+    me.commands['pagebreak'] = {
+        execCommand:function () {
+            var range = me.selection.getRange(),hr = me.document.createElement('hr');
+            domUtils.setAttributes(hr,{
+                'class' : 'pagebreak',
+                noshade:"noshade",
+                size:"5"
+            });
+            domUtils.unSelectable(hr);
+            //table单独处理
+            var node = domUtils.findParentByTagName(range.startContainer, notBreakTags, true),
+
+                parents = [], pN;
+            if (node) {
+                switch (node.tagName) {
+                    case 'TD':
+                        pN = node.parentNode;
+                        if (!pN.previousSibling) {
+                            var table = domUtils.findParentByTagName(pN, 'table');
+//                            var tableWrapDiv = table.parentNode;
+//                            if(tableWrapDiv && tableWrapDiv.nodeType == 1
+//                                && tableWrapDiv.tagName == 'DIV'
+//                                && tableWrapDiv.getAttribute('dropdrag')
+//                                ){
+//                                domUtils.remove(tableWrapDiv,true);
+//                            }
+                            table.parentNode.insertBefore(hr, table);
+                            parents = domUtils.findParents(hr, true);
+
+                        } else {
+                            pN.parentNode.insertBefore(hr, pN);
+                            parents = domUtils.findParents(hr);
+
+                        }
+                        pN = parents[1];
+                        if (hr !== pN) {
+                            domUtils.breakParent(hr, pN);
+
+                        }
+                        //table要重写绑定一下拖拽
+                        me.fireEvent('afteradjusttable',me.document);
+                }
+
+            } else {
+
+                if (!range.collapsed) {
+                    range.deleteContents();
+                    var start = range.startContainer;
+                    while ( !domUtils.isBody(start) && domUtils.isBlockElm(start) && domUtils.isEmptyNode(start)) {
+                        range.setStartBefore(start).collapse(true);
+                        domUtils.remove(start);
+                        start = range.startContainer;
+                    }
+
+                }
+                range.insertNode(hr);
+
+                var pN = hr.parentNode, nextNode;
+                while (!domUtils.isBody(pN)) {
+                    domUtils.breakParent(hr, pN);
+                    nextNode = hr.nextSibling;
+                    if (nextNode && domUtils.isEmptyBlock(nextNode)) {
+                        domUtils.remove(nextNode);
+                    }
+                    pN = hr.parentNode;
+                }
+                nextNode = hr.nextSibling;
+                var pre = hr.previousSibling;
+                if(isHr(pre)){
+                    domUtils.remove(pre);
+                }else{
+                    pre && fillNode(pre);
+                }
+
+                if(!nextNode){
+                    var p = me.document.createElement('p');
+
+                    hr.parentNode.appendChild(p);
+                    domUtils.fillNode(me.document,p);
+                    range.setStart(p,0).collapse(true);
+                }else{
+                    if(isHr(nextNode)){
+                        domUtils.remove(nextNode);
+                    }else{
+                        fillNode(nextNode);
+                    }
+                    range.setEndAfter(hr).collapse(false);
+                }
+
+                range.select(true);
+
+            }
+
+        }
+    };
+};
+
+// plugins/wordimage.js
+///import core
+///commands 本地图片引导上传
+///commandsName  WordImage
+///commandsTitle  本地图片引导上传
+///commandsDialog  dialogs\wordimage
+
+UE.plugin.register('wordimage',function(){
+    var me = this,
+        images = [];
+    return {
+        commands : {
+            'wordimage':{
+                execCommand:function () {
+                    var images = domUtils.getElementsByTagName(me.body, "img");
+                    var urlList = [];
+                    for (var i = 0, ci; ci = images[i++];) {
+                        var url = ci.getAttribute("word_img");
+                        url && urlList.push(url);
+                    }
+                    return urlList;
+                },
+                queryCommandState:function () {
+                    images = domUtils.getElementsByTagName(me.body, "img");
+                    for (var i = 0, ci; ci = images[i++];) {
+                        if (ci.getAttribute("word_img")) {
+                            return 1;
+                        }
+                    }
+                    return -1;
+                },
+                notNeedUndo:true
+            }
+        },
+        inputRule : function (root) {
+            utils.each(root.getNodesByTagName('img'), function (img) {
+                var attrs = img.attrs,
+                    flag = parseInt(attrs.width) < 128 || parseInt(attrs.height) < 43,
+                    opt = me.options,
+                    src = opt.UEDITOR_HOME_URL + 'themes/default/images/spacer.gif';
+                if (attrs['src'] && /^(?:(file:\/+))/.test(attrs['src'])) {
+                    img.setAttr({
+                        width:attrs.width,
+                        height:attrs.height,
+                        alt:attrs.alt,
+                        word_img: attrs.src,
+                        src:src,
+                        'style':'background:url(' + ( flag ? opt.themePath + opt.theme + '/images/word.gif' : opt.langPath + opt.lang + '/images/localimage.png') + ') no-repeat center center;border:1px solid #ddd'
+                    })
+                }
+            })
+        }
+    }
+});
 
 // plugins/dragdrop.js
 UE.plugins['dragdrop'] = function (){
@@ -13383,6 +14397,78 @@ UE.plugins['undo'] = function () {
         me.__hasEnterExecCommand = false;
     }
 };
+
+
+// plugins/copy.js
+UE.plugin.register('copy', function () {
+
+    var me = this;
+
+    function initZeroClipboard() {
+
+        ZeroClipboard.config({
+            debug: false,
+            swfPath: me.options.UEDITOR_HOME_URL + 'third-party/zeroclipboard/ZeroClipboard.swf'
+        });
+
+        var client = me.zeroclipboard = new ZeroClipboard();
+
+        // 复制内容
+        client.on('copy', function (e) {
+            var client = e.client,
+                rng = me.selection.getRange(),
+                div = document.createElement('div');
+
+            div.appendChild(rng.cloneContents());
+            client.setText(div.innerText || div.textContent);
+            client.setHtml(div.innerHTML);
+            rng.select();
+        });
+        // hover事件传递到target
+        client.on('mouseover mouseout', function (e) {
+            var target = e.target;
+            if (e.type == 'mouseover') {
+                domUtils.addClass(target, 'edui-state-hover');
+            } else if (e.type == 'mouseout') {
+                domUtils.removeClasses(target, 'edui-state-hover');
+            }
+        });
+        // flash加载不成功
+        client.on('wrongflash noflash', function () {
+            ZeroClipboard.destroy();
+        });
+    }
+
+    return {
+        bindEvents: {
+            'ready': function () {
+                if (!browser.ie) {
+                    if (window.ZeroClipboard) {
+                        initZeroClipboard();
+                    } else {
+                        utils.loadFile(document, {
+                            src: me.options.UEDITOR_HOME_URL + "third-party/zeroclipboard/ZeroClipboard.js",
+                            tag: "script",
+                            type: "text/javascript",
+                            defer: "defer"
+                        }, function () {
+                            initZeroClipboard();
+                        });
+                    }
+                }
+            }
+        },
+        commands: {
+            'copy': {
+                execCommand: function (cmd) {
+                    if (!me.document.execCommand('copy')) {
+                        alert(me.getLang('copymsg'));
+                    }
+                }
+            }
+        }
+    }
+});
 
 
 // plugins/paste.js
@@ -13792,6 +14878,1255 @@ UE.plugins['pasteplain'] = function(){
         notNeedUndo : 1
     };
 };
+
+// plugins/list.js
+/**
+ * 有序列表,无序列表插件
+ * @file
+ * @since 1.2.6.1
+ */
+
+UE.plugins['list'] = function () {
+    var me = this,
+        notExchange = {
+            'TD':1,
+            'PRE':1,
+            'BLOCKQUOTE':1
+        };
+    var customStyle = {
+        'cn' : 'cn-1-',
+        'cn1' : 'cn-2-',
+        'cn2' : 'cn-3-',
+        'num':  'num-1-',
+        'num1' : 'num-2-',
+        'num2' : 'num-3-',
+        'dash'  : 'dash',
+        'dot':'dot'
+    };
+
+    me.setOpt( {
+        'autoTransWordToList':false,
+        'insertorderedlist':{
+            'num':'',
+            'num1':'',
+            'num2':'',
+            'cn':'',
+            'cn1':'',
+            'cn2':'',
+            'decimal':'',
+            'lower-alpha':'',
+            'lower-roman':'',
+            'upper-alpha':'',
+            'upper-roman':''
+        },
+        'insertunorderedlist':{
+            'circle':'',
+            'disc':'',
+            'square':'',
+            'dash' : '',
+            'dot':''
+        },
+        listDefaultPaddingLeft : '30',
+        listiconpath : 'http://bs.baidu.com/listicon/',
+        maxListLevel : -1,//-1不限制
+        disablePInList:false
+    } );
+    function listToArray(list){
+        var arr = [];
+        for(var p in list){
+            arr.push(p)
+        }
+        return arr;
+    }
+    var listStyle = {
+        'OL':listToArray(me.options.insertorderedlist),
+        'UL':listToArray(me.options.insertunorderedlist)
+    };
+    var liiconpath = me.options.listiconpath;
+
+    //根据用户配置，调整customStyle
+    for(var s in customStyle){
+        if(!me.options.insertorderedlist.hasOwnProperty(s) && !me.options.insertunorderedlist.hasOwnProperty(s)){
+            delete customStyle[s];
+        }
+    }
+
+    me.ready(function () {
+        var customCss = [];
+        for(var p in customStyle){
+            if(p == 'dash' || p == 'dot'){
+                customCss.push('li.list-' + customStyle[p] + '{background-image:url(' + liiconpath +customStyle[p]+'.gif)}');
+                customCss.push('ul.custom_'+p+'{list-style:none;}ul.custom_'+p+' li{background-position:0 3px;background-repeat:no-repeat}');
+            }else{
+                for(var i= 0;i<99;i++){
+                    customCss.push('li.list-' + customStyle[p] + i + '{background-image:url(' + liiconpath + 'list-'+customStyle[p] + i + '.gif)}')
+                }
+                customCss.push('ol.custom_'+p+'{list-style:none;}ol.custom_'+p+' li{background-position:0 3px;background-repeat:no-repeat}');
+            }
+            switch(p){
+                case 'cn':
+                    customCss.push('li.list-'+p+'-paddingleft-1{padding-left:25px}');
+                    customCss.push('li.list-'+p+'-paddingleft-2{padding-left:40px}');
+                    customCss.push('li.list-'+p+'-paddingleft-3{padding-left:55px}');
+                    break;
+                case 'cn1':
+                    customCss.push('li.list-'+p+'-paddingleft-1{padding-left:30px}');
+                    customCss.push('li.list-'+p+'-paddingleft-2{padding-left:40px}');
+                    customCss.push('li.list-'+p+'-paddingleft-3{padding-left:55px}');
+                    break;
+                case 'cn2':
+                    customCss.push('li.list-'+p+'-paddingleft-1{padding-left:40px}');
+                    customCss.push('li.list-'+p+'-paddingleft-2{padding-left:55px}');
+                    customCss.push('li.list-'+p+'-paddingleft-3{padding-left:68px}');
+                    break;
+                case 'num':
+                case 'num1':
+                    customCss.push('li.list-'+p+'-paddingleft-1{padding-left:25px}');
+                    break;
+                case 'num2':
+                    customCss.push('li.list-'+p+'-paddingleft-1{padding-left:35px}');
+                    customCss.push('li.list-'+p+'-paddingleft-2{padding-left:40px}');
+                    break;
+                case 'dash':
+                    customCss.push('li.list-'+p+'-paddingleft{padding-left:35px}');
+                    break;
+                case 'dot':
+                    customCss.push('li.list-'+p+'-paddingleft{padding-left:20px}');
+            }
+        }
+        customCss.push('.list-paddingleft-1{padding-left:0}');
+        customCss.push('.list-paddingleft-2{padding-left:'+me.options.listDefaultPaddingLeft+'px}');
+        customCss.push('.list-paddingleft-3{padding-left:'+me.options.listDefaultPaddingLeft*2+'px}');
+        //如果不给宽度会在自定应样式里出现滚动条
+        utils.cssRule('list', 'ol,ul{margin:0;pading:0;'+(browser.ie ? '' : 'width:95%')+'}li{clear:both;}'+customCss.join('\n'), me.document);
+    });
+    //单独处理剪切的问题
+    me.ready(function(){
+        domUtils.on(me.body,'cut',function(){
+            setTimeout(function(){
+                var rng = me.selection.getRange(),li;
+                //trace:3416
+                if(!rng.collapsed){
+                    if(li = domUtils.findParentByTagName(rng.startContainer,'li',true)){
+                        if(!li.nextSibling && domUtils.isEmptyBlock(li)){
+                            var pn = li.parentNode,node;
+                            if(node = pn.previousSibling){
+                                domUtils.remove(pn);
+                                rng.setStartAtLast(node).collapse(true);
+                                rng.select(true);
+                            }else if(node = pn.nextSibling){
+                                domUtils.remove(pn);
+                                rng.setStartAtFirst(node).collapse(true);
+                                rng.select(true);
+                            }else{
+                                var tmpNode = me.document.createElement('p');
+                                domUtils.fillNode(me.document,tmpNode);
+                                pn.parentNode.insertBefore(tmpNode,pn);
+                                domUtils.remove(pn);
+                                rng.setStart(tmpNode,0).collapse(true);
+                                rng.select(true);
+                            }
+                        }
+                    }
+                }
+
+            })
+        })
+    });
+
+    function getStyle(node){
+        var cls = node.className;
+        if(domUtils.hasClass(node,/custom_/)){
+            return cls.match(/custom_(\w+)/)[1]
+        }
+        return domUtils.getStyle(node, 'list-style-type')
+
+    }
+
+    me.addListener('beforepaste',function(type,html){
+        var me = this,
+            rng = me.selection.getRange(),li;
+        var root = UE.htmlparser(html.html,true);
+        if(li = domUtils.findParentByTagName(rng.startContainer,'li',true)){
+            var list = li.parentNode,tagName = list.tagName == 'OL' ? 'ul':'ol';
+            utils.each(root.getNodesByTagName(tagName),function(n){
+                n.tagName = list.tagName;
+                n.setAttr();
+                if(n.parentNode === root){
+                    type = getStyle(list) || (list.tagName == 'OL' ? 'decimal' : 'disc')
+                }else{
+                    var className = n.parentNode.getAttr('class');
+                    if(className && /custom_/.test(className)){
+                        type = className.match(/custom_(\w+)/)[1]
+                    }else{
+                        type = n.parentNode.getStyle('list-style-type');
+                    }
+                    if(!type){
+                        type = list.tagName == 'OL' ? 'decimal' : 'disc';
+                    }
+                }
+                var index = utils.indexOf(listStyle[list.tagName], type);
+                if(n.parentNode !== root)
+                    index = index + 1 == listStyle[list.tagName].length ? 0 : index + 1;
+                var currentStyle = listStyle[list.tagName][index];
+                if(customStyle[currentStyle]){
+                    n.setAttr('class', 'custom_' + currentStyle)
+
+                }else{
+                    n.setStyle('list-style-type',currentStyle)
+                }
+            })
+
+        }
+
+        html.html = root.toHtml();
+    });
+    //导出时，去掉p标签
+    me.getOpt('disablePInList') === true && me.addOutputRule(function(root){
+        utils.each(root.getNodesByTagName('li'),function(li){
+            var newChildrens = [],index=0;
+            utils.each(li.children,function(n){
+                if(n.tagName == 'p'){
+                    var tmpNode;
+                    while(tmpNode = n.children.pop()) {
+                        newChildrens.splice(index,0,tmpNode);
+                        tmpNode.parentNode = li;
+                        lastNode = tmpNode;
+                    }
+                    tmpNode = newChildrens[newChildrens.length-1];
+                    if(!tmpNode || tmpNode.type != 'element' || tmpNode.tagName != 'br'){
+                        var br = UE.uNode.createElement('br');
+                        br.parentNode = li;
+                        newChildrens.push(br);
+                    }
+
+                    index = newChildrens.length;
+                }
+            });
+            if(newChildrens.length){
+                li.children = newChildrens;
+            }
+        });
+    });
+    //进入编辑器的li要套p标签
+    me.addInputRule(function(root){
+        utils.each(root.getNodesByTagName('li'),function(li){
+            var tmpP = UE.uNode.createElement('p');
+            for(var i= 0,ci;ci=li.children[i];){
+                if(ci.type == 'text' || dtd.p[ci.tagName]){
+                    tmpP.appendChild(ci);
+                }else{
+                    if(tmpP.firstChild()){
+                        li.insertBefore(tmpP,ci);
+                        tmpP = UE.uNode.createElement('p');
+                        i = i + 2;
+                    }else{
+                        i++;
+                    }
+
+                }
+            }
+            if(tmpP.firstChild() && !tmpP.parentNode || !li.firstChild()){
+                li.appendChild(tmpP);
+            }
+            //trace:3357
+            //p不能为空
+            if (!tmpP.firstChild()) {
+                tmpP.innerHTML(browser.ie ? '&nbsp;' : '<br/>')
+            }
+            //去掉末尾的空白
+            var p = li.firstChild();
+            var lastChild = p.lastChild();
+            if(lastChild && lastChild.type == 'text' && /^\s*$/.test(lastChild.data)){
+                p.removeChild(lastChild)
+            }
+        });
+        if(me.options.autoTransWordToList){
+            var orderlisttype = {
+                    'num1':/^\d+\)/,
+                    'decimal':/^\d+\./,
+                    'lower-alpha':/^[a-z]+\)/,
+                    'upper-alpha':/^[A-Z]+\./,
+                    'cn':/^[\u4E00\u4E8C\u4E09\u56DB\u516d\u4e94\u4e03\u516b\u4e5d]+[\u3001]/,
+                    'cn2':/^\([\u4E00\u4E8C\u4E09\u56DB\u516d\u4e94\u4e03\u516b\u4e5d]+\)/
+                },
+                unorderlisttype = {
+                    'square':'n'
+                };
+            function checkListType(content,container){
+                var span = container.firstChild();
+                if(span &&  span.type == 'element' && span.tagName == 'span' && /Wingdings|Symbol/.test(span.getStyle('font-family'))){
+                    for(var p in unorderlisttype){
+                        if(unorderlisttype[p] == span.data){
+                            return p
+                        }
+                    }
+                    return 'disc'
+                }
+                for(var p in orderlisttype){
+                    if(orderlisttype[p].test(content)){
+                        return p;
+                    }
+                }
+
+            }
+            utils.each(root.getNodesByTagName('p'),function(node){
+                if(node.getAttr('class') != 'MsoListParagraph'){
+                    return
+                }
+
+                //word粘贴过来的会带有margin要去掉,但这样也可能会误命中一些央视
+                node.setStyle('margin','');
+                node.setStyle('margin-left','');
+                node.setAttr('class','');
+
+                function appendLi(list,p,type){
+                    if(list.tagName == 'ol'){
+                        if(browser.ie){
+                            var first = p.firstChild();
+                            if(first.type =='element' && first.tagName == 'span' && orderlisttype[type].test(first.innerText())){
+                                p.removeChild(first);
+                            }
+                        }else{
+                            p.innerHTML(p.innerHTML().replace(orderlisttype[type],''));
+                        }
+                    }else{
+                        p.removeChild(p.firstChild())
+                    }
+
+                    var li = UE.uNode.createElement('li');
+                    li.appendChild(p);
+                    list.appendChild(li);
+                }
+                var tmp = node,type,cacheNode = node;
+
+                if(node.parentNode.tagName != 'li' && (type = checkListType(node.innerText(),node))){
+
+                    var list = UE.uNode.createElement(me.options.insertorderedlist.hasOwnProperty(type) ? 'ol' : 'ul');
+                    if(customStyle[type]){
+                        list.setAttr('class','custom_'+type)
+                    }else{
+                        list.setStyle('list-style-type',type)
+                    }
+                    while(node && node.parentNode.tagName != 'li' && checkListType(node.innerText(),node)){
+                        tmp = node.nextSibling();
+                        if(!tmp){
+                            node.parentNode.insertBefore(list,node)
+                        }
+                        appendLi(list,node,type);
+                        node = tmp;
+                    }
+                    if(!list.parentNode && node && node.parentNode){
+                        node.parentNode.insertBefore(list,node)
+                    }
+                }
+                var span = cacheNode.firstChild();
+                if(span && span.type == 'element' && span.tagName == 'span' && /^\s*(&nbsp;)+\s*$/.test(span.innerText())){
+                    span.parentNode.removeChild(span)
+                }
+            })
+        }
+
+    });
+
+    //调整索引标签
+    me.addListener('contentchange',function(){
+        adjustListStyle(me.document)
+    });
+
+    function adjustListStyle(doc,ignore){
+        utils.each(domUtils.getElementsByTagName(doc,'ol ul'),function(node){
+
+            if(!domUtils.inDoc(node,doc))
+                return;
+
+            var parent = node.parentNode;
+            if(parent.tagName == node.tagName){
+                var nodeStyleType = getStyle(node) || (node.tagName == 'OL' ? 'decimal' : 'disc'),
+                    parentStyleType = getStyle(parent) || (parent.tagName == 'OL' ? 'decimal' : 'disc');
+                if(nodeStyleType == parentStyleType){
+                    var styleIndex = utils.indexOf(listStyle[node.tagName], nodeStyleType);
+                    styleIndex = styleIndex + 1 == listStyle[node.tagName].length ? 0 : styleIndex + 1;
+                    setListStyle(node,listStyle[node.tagName][styleIndex])
+                }
+
+            }
+            var index = 0,type = 2;
+            if( domUtils.hasClass(node,/custom_/)){
+                if(!(/[ou]l/i.test(parent.tagName) && domUtils.hasClass(parent,/custom_/))){
+                    type = 1;
+                }
+            }else{
+                if(/[ou]l/i.test(parent.tagName) && domUtils.hasClass(parent,/custom_/)){
+                    type = 3;
+                }
+            }
+
+            var style = domUtils.getStyle(node, 'list-style-type');
+            style && (node.style.cssText = 'list-style-type:' + style);
+            node.className = utils.trim(node.className.replace(/list-paddingleft-\w+/,'')) + ' list-paddingleft-' + type;
+            utils.each(domUtils.getElementsByTagName(node,'li'),function(li){
+                li.style.cssText && (li.style.cssText = '');
+                if(!li.firstChild){
+                    domUtils.remove(li);
+                    return;
+                }
+                if(li.parentNode !== node){
+                    return;
+                }
+                index++;
+                if(domUtils.hasClass(node,/custom_/) ){
+                    var paddingLeft = 1,currentStyle = getStyle(node);
+                    if(node.tagName == 'OL'){
+                        if(currentStyle){
+                            switch(currentStyle){
+                                case 'cn' :
+                                case 'cn1':
+                                case 'cn2':
+                                    if(index > 10 && (index % 10 == 0 || index > 10 && index < 20)){
+                                        paddingLeft = 2
+                                    }else if(index > 20){
+                                        paddingLeft = 3
+                                    }
+                                    break;
+                                case 'num2' :
+                                    if(index > 9){
+                                        paddingLeft = 2
+                                    }
+                            }
+                        }
+                        li.className = 'list-'+customStyle[currentStyle]+ index + ' ' + 'list-'+currentStyle+'-paddingleft-' + paddingLeft;
+                    }else{
+                        li.className = 'list-'+customStyle[currentStyle]  + ' ' + 'list-'+currentStyle+'-paddingleft';
+                    }
+                }else{
+                    li.className = li.className.replace(/list-[\w\-]+/gi,'');
+                }
+                var className = li.getAttribute('class');
+                if(className !== null && !className.replace(/\s/g,'')){
+                    domUtils.removeAttributes(li,'class')
+                }
+            });
+            !ignore && adjustList(node,node.tagName.toLowerCase(),getStyle(node)||domUtils.getStyle(node, 'list-style-type'),true);
+        })
+    }
+    function adjustList(list, tag, style,ignoreEmpty) {
+        var nextList = list.nextSibling;
+        if (nextList && nextList.nodeType == 1 && nextList.tagName.toLowerCase() == tag && (getStyle(nextList) || domUtils.getStyle(nextList, 'list-style-type') || (tag == 'ol' ? 'decimal' : 'disc')) == style) {
+            domUtils.moveChild(nextList, list);
+            if (nextList.childNodes.length == 0) {
+                domUtils.remove(nextList);
+            }
+        }
+        if(nextList && domUtils.isFillChar(nextList)){
+            domUtils.remove(nextList);
+        }
+        var preList = list.previousSibling;
+        if (preList && preList.nodeType == 1 && preList.tagName.toLowerCase() == tag && (getStyle(preList) || domUtils.getStyle(preList, 'list-style-type') || (tag == 'ol' ? 'decimal' : 'disc')) == style) {
+            domUtils.moveChild(list, preList);
+        }
+        if(preList && domUtils.isFillChar(preList)){
+            domUtils.remove(preList);
+        }
+        !ignoreEmpty && domUtils.isEmptyBlock(list) && domUtils.remove(list);
+        if(getStyle(list)){
+            adjustListStyle(list.ownerDocument,true)
+        }
+    }
+
+    function setListStyle(list,style){
+        if(customStyle[style]){
+            list.className = 'custom_' + style;
+        }
+        try{
+            domUtils.setStyle(list, 'list-style-type', style);
+        }catch(e){}
+    }
+    function clearEmptySibling(node) {
+        var tmpNode = node.previousSibling;
+        if (tmpNode && domUtils.isEmptyBlock(tmpNode)) {
+            domUtils.remove(tmpNode);
+        }
+        tmpNode = node.nextSibling;
+        if (tmpNode && domUtils.isEmptyBlock(tmpNode)) {
+            domUtils.remove(tmpNode);
+        }
+    }
+
+    me.addListener('keydown', function (type, evt) {
+        function preventAndSave() {
+            evt.preventDefault ? evt.preventDefault() : (evt.returnValue = false);
+            me.fireEvent('contentchange');
+            me.undoManger && me.undoManger.save();
+        }
+        function findList(node,filterFn){
+            while(node && !domUtils.isBody(node)){
+                if(filterFn(node)){
+                    return null
+                }
+                if(node.nodeType == 1 && /[ou]l/i.test(node.tagName)){
+                    return node;
+                }
+                node = node.parentNode;
+            }
+            return null;
+        }
+        var keyCode = evt.keyCode || evt.which;
+        if (keyCode == 13 && !evt.shiftKey) {//回车
+            var rng = me.selection.getRange(),
+                parent = domUtils.findParent(rng.startContainer,function(node){return domUtils.isBlockElm(node)},true),
+                li = domUtils.findParentByTagName(rng.startContainer,'li',true);
+            if(parent && parent.tagName != 'PRE' && !li){
+                var html = parent.innerHTML.replace(new RegExp(domUtils.fillChar, 'g'),'');
+                if(/^\s*1\s*\.[^\d]/.test(html)){
+                    parent.innerHTML = html.replace(/^\s*1\s*\./,'');
+                    rng.setStartAtLast(parent).collapse(true).select();
+                    me.__hasEnterExecCommand = true;
+                    me.execCommand('insertorderedlist');
+                    me.__hasEnterExecCommand = false;
+                }
+            }
+            var range = me.selection.getRange(),
+                start = findList(range.startContainer,function (node) {
+                    return node.tagName == 'TABLE';
+                }),
+                end = range.collapsed ? start : findList(range.endContainer,function (node) {
+                    return node.tagName == 'TABLE';
+                });
+
+            if (start && end && start === end) {
+
+                if (!range.collapsed) {
+                    start = domUtils.findParentByTagName(range.startContainer, 'li', true);
+                    end = domUtils.findParentByTagName(range.endContainer, 'li', true);
+                    if (start && end && start === end) {
+                        range.deleteContents();
+                        li = domUtils.findParentByTagName(range.startContainer, 'li', true);
+                        if (li && domUtils.isEmptyBlock(li)) {
+
+                            pre = li.previousSibling;
+                            next = li.nextSibling;
+                            p = me.document.createElement('p');
+
+                            domUtils.fillNode(me.document, p);
+                            parentList = li.parentNode;
+                            if (pre && next) {
+                                range.setStart(next, 0).collapse(true).select(true);
+                                domUtils.remove(li);
+
+                            } else {
+                                if (!pre && !next || !pre) {
+
+                                    parentList.parentNode.insertBefore(p, parentList);
+
+
+                                } else {
+                                    li.parentNode.parentNode.insertBefore(p, parentList.nextSibling);
+                                }
+                                domUtils.remove(li);
+                                if (!parentList.firstChild) {
+                                    domUtils.remove(parentList);
+                                }
+                                range.setStart(p, 0).setCursor();
+
+
+                            }
+                            preventAndSave();
+                            return;
+
+                        }
+                    } else {
+                        var tmpRange = range.cloneRange(),
+                            bk = tmpRange.collapse(false).createBookmark();
+
+                        range.deleteContents();
+                        tmpRange.moveToBookmark(bk);
+                        var li = domUtils.findParentByTagName(tmpRange.startContainer, 'li', true);
+
+                        clearEmptySibling(li);
+                        tmpRange.select();
+                        preventAndSave();
+                        return;
+                    }
+                }
+
+
+                li = domUtils.findParentByTagName(range.startContainer, 'li', true);
+
+                if (li) {
+                    if (domUtils.isEmptyBlock(li)) {
+                        bk = range.createBookmark();
+                        var parentList = li.parentNode;
+                        if (li !== parentList.lastChild) {
+                            domUtils.breakParent(li, parentList);
+                            clearEmptySibling(li);
+                        } else {
+
+                            parentList.parentNode.insertBefore(li, parentList.nextSibling);
+                            if (domUtils.isEmptyNode(parentList)) {
+                                domUtils.remove(parentList);
+                            }
+                        }
+                        //嵌套不处理
+                        if (!dtd.$list[li.parentNode.tagName]) {
+
+                            if (!domUtils.isBlockElm(li.firstChild)) {
+                                p = me.document.createElement('p');
+                                li.parentNode.insertBefore(p, li);
+                                while (li.firstChild) {
+                                    p.appendChild(li.firstChild);
+                                }
+                                domUtils.remove(li);
+                            } else {
+                                domUtils.remove(li, true);
+                            }
+                        }
+                        range.moveToBookmark(bk).select();
+
+
+                    } else {
+                        var first = li.firstChild;
+                        if (!first || !domUtils.isBlockElm(first)) {
+                            var p = me.document.createElement('p');
+
+                            !li.firstChild && domUtils.fillNode(me.document, p);
+                            while (li.firstChild) {
+
+                                p.appendChild(li.firstChild);
+                            }
+                            li.appendChild(p);
+                            first = p;
+                        }
+
+                        var span = me.document.createElement('span');
+
+                        range.insertNode(span);
+                        domUtils.breakParent(span, li);
+
+                        var nextLi = span.nextSibling;
+                        first = nextLi.firstChild;
+
+                        if (!first) {
+                            p = me.document.createElement('p');
+
+                            domUtils.fillNode(me.document, p);
+                            nextLi.appendChild(p);
+                            first = p;
+                        }
+                        if (domUtils.isEmptyNode(first)) {
+                            first.innerHTML = '';
+                            domUtils.fillNode(me.document, first);
+                        }
+
+                        range.setStart(first, 0).collapse(true).shrinkBoundary().select();
+                        domUtils.remove(span);
+                        var pre = nextLi.previousSibling;
+                        if (pre && domUtils.isEmptyBlock(pre)) {
+                            pre.innerHTML = '<p></p>';
+                            domUtils.fillNode(me.document, pre.firstChild);
+                        }
+
+                    }
+//                        }
+                    preventAndSave();
+                }
+
+
+            }
+
+
+        }
+        if (keyCode == 8) {
+            //修中ie中li下的问题
+            range = me.selection.getRange();
+            if (range.collapsed && domUtils.isStartInblock(range)) {
+                tmpRange = range.cloneRange().trimBoundary();
+                li = domUtils.findParentByTagName(range.startContainer, 'li', true);
+                //要在li的最左边，才能处理
+                if (li && domUtils.isStartInblock(tmpRange)) {
+                    start = domUtils.findParentByTagName(range.startContainer, 'p', true);
+                    if (start && start !== li.firstChild) {
+                        var parentList = domUtils.findParentByTagName(start,['ol','ul']);
+                        domUtils.breakParent(start,parentList);
+                        clearEmptySibling(start);
+                        me.fireEvent('contentchange');
+                        range.setStart(start,0).setCursor(false,true);
+                        me.fireEvent('saveScene');
+                        domUtils.preventDefault(evt);
+                        return;
+                    }
+
+                    if (li && (pre = li.previousSibling)) {
+                        if (keyCode == 46 && li.childNodes.length) {
+                            return;
+                        }
+                        //有可能上边的兄弟节点是个2级菜单，要追加到2级菜单的最后的li
+                        if (dtd.$list[pre.tagName]) {
+                            pre = pre.lastChild;
+                        }
+                        me.undoManger && me.undoManger.save();
+                        first = li.firstChild;
+                        if (domUtils.isBlockElm(first)) {
+                            if (domUtils.isEmptyNode(first)) {
+//                                    range.setEnd(pre, pre.childNodes.length).shrinkBoundary().collapse().select(true);
+                                pre.appendChild(first);
+                                range.setStart(first, 0).setCursor(false, true);
+                                //first不是唯一的节点
+                                while (li.firstChild) {
+                                    pre.appendChild(li.firstChild);
+                                }
+                            } else {
+
+                                span = me.document.createElement('span');
+                                range.insertNode(span);
+                                //判断pre是否是空的节点,如果是<p><br/></p>类型的空节点，干掉p标签防止它占位
+                                if (domUtils.isEmptyBlock(pre)) {
+                                    pre.innerHTML = '';
+                                }
+                                domUtils.moveChild(li, pre);
+                                range.setStartBefore(span).collapse(true).select(true);
+
+                                domUtils.remove(span);
+
+                            }
+                        } else {
+                            if (domUtils.isEmptyNode(li)) {
+                                var p = me.document.createElement('p');
+                                pre.appendChild(p);
+                                range.setStart(p, 0).setCursor();
+//                                    range.setEnd(pre, pre.childNodes.length).shrinkBoundary().collapse().select(true);
+                            } else {
+                                range.setEnd(pre, pre.childNodes.length).collapse().select(true);
+                                while (li.firstChild) {
+                                    pre.appendChild(li.firstChild);
+                                }
+                            }
+                        }
+                        domUtils.remove(li);
+                        me.fireEvent('contentchange');
+                        me.fireEvent('saveScene');
+                        domUtils.preventDefault(evt);
+                        return;
+
+                    }
+                    //trace:980
+
+                    if (li && !li.previousSibling) {
+                        var parentList = li.parentNode;
+                        var bk = range.createBookmark();
+                        if(domUtils.isTagNode(parentList.parentNode,'ol ul')){
+                            parentList.parentNode.insertBefore(li,parentList);
+                            if(domUtils.isEmptyNode(parentList)){
+                                domUtils.remove(parentList)
+                            }
+                        }else{
+
+                            while(li.firstChild){
+                                parentList.parentNode.insertBefore(li.firstChild,parentList);
+                            }
+
+                            domUtils.remove(li);
+                            if(domUtils.isEmptyNode(parentList)){
+                                domUtils.remove(parentList)
+                            }
+
+                        }
+                        range.moveToBookmark(bk).setCursor(false,true);
+                        me.fireEvent('contentchange');
+                        me.fireEvent('saveScene');
+                        domUtils.preventDefault(evt);
+                        return;
+
+                    }
+
+
+                }
+
+
+            }
+
+        }
+    });
+
+    me.addListener('keyup',function(type, evt){
+        var keyCode = evt.keyCode || evt.which;
+        if (keyCode == 8) {
+            var rng = me.selection.getRange(),list;
+            if(list = domUtils.findParentByTagName(rng.startContainer,['ol', 'ul'],true)){
+                adjustList(list,list.tagName.toLowerCase(),getStyle(list)||domUtils.getComputedStyle(list,'list-style-type'),true)
+            }
+        }
+    });
+    //处理tab键
+    me.addListener('tabkeydown',function(){
+
+        var range = me.selection.getRange();
+
+        //控制级数
+        function checkLevel(li){
+            if(me.options.maxListLevel != -1){
+                var level = li.parentNode,levelNum = 0;
+                while(/[ou]l/i.test(level.tagName)){
+                    levelNum++;
+                    level = level.parentNode;
+                }
+                if(levelNum >= me.options.maxListLevel){
+                    return true;
+                }
+            }
+        }
+        //只以开始为准
+        //todo 后续改进
+        var li = domUtils.findParentByTagName(range.startContainer, 'li', true);
+        if(li){
+
+            var bk;
+            if(range.collapsed){
+                if(checkLevel(li))
+                    return true;
+                var parentLi = li.parentNode,
+                    list = me.document.createElement(parentLi.tagName),
+                    index = utils.indexOf(listStyle[list.tagName], getStyle(parentLi)||domUtils.getComputedStyle(parentLi, 'list-style-type'));
+                index = index + 1 == listStyle[list.tagName].length ? 0 : index + 1;
+                var currentStyle = listStyle[list.tagName][index];
+                setListStyle(list,currentStyle);
+                if(domUtils.isStartInblock(range)){
+                    me.fireEvent('saveScene');
+                    bk = range.createBookmark();
+                    parentLi.insertBefore(list, li);
+                    list.appendChild(li);
+                    adjustList(list,list.tagName.toLowerCase(),currentStyle);
+                    me.fireEvent('contentchange');
+                    range.moveToBookmark(bk).select(true);
+                    return true;
+                }
+            }else{
+                me.fireEvent('saveScene');
+                bk = range.createBookmark();
+                for(var i= 0,closeList,parents = domUtils.findParents(li),ci;ci=parents[i++];){
+                    if(domUtils.isTagNode(ci,'ol ul')){
+                        closeList = ci;
+                        break;
+                    }
+                }
+                var current = li;
+                if(bk.end){
+                    while(current && !(domUtils.getPosition(current, bk.end) & domUtils.POSITION_FOLLOWING)){
+                        if(checkLevel(current)){
+                            current = domUtils.getNextDomNode(current,false,null,function(node){return node !== closeList});
+                            continue;
+                        }
+                        var parentLi = current.parentNode,
+                            list = me.document.createElement(parentLi.tagName),
+                            index = utils.indexOf(listStyle[list.tagName], getStyle(parentLi)||domUtils.getComputedStyle(parentLi, 'list-style-type'));
+                        var currentIndex = index + 1 == listStyle[list.tagName].length ? 0 : index + 1;
+                        var currentStyle = listStyle[list.tagName][currentIndex];
+                        setListStyle(list,currentStyle);
+                        parentLi.insertBefore(list, current);
+                        while(current && !(domUtils.getPosition(current, bk.end) & domUtils.POSITION_FOLLOWING)){
+                            li = current.nextSibling;
+                            list.appendChild(current);
+                            if(!li || domUtils.isTagNode(li,'ol ul')){
+                                if(li){
+                                    while(li = li.firstChild){
+                                        if(li.tagName == 'LI'){
+                                            break;
+                                        }
+                                    }
+                                }else{
+                                    li = domUtils.getNextDomNode(current,false,null,function(node){return node !== closeList});
+                                }
+                                break;
+                            }
+                            current = li;
+                        }
+                        adjustList(list,list.tagName.toLowerCase(),currentStyle);
+                        current = li;
+                    }
+                }
+                me.fireEvent('contentchange');
+                range.moveToBookmark(bk).select();
+                return true;
+            }
+        }
+
+    });
+    function getLi(start){
+        while(start && !domUtils.isBody(start)){
+            if(start.nodeName == 'TABLE'){
+                return null;
+            }
+            if(start.nodeName == 'LI'){
+                return start
+            }
+            start = start.parentNode;
+        }
+    }
+
+    /**
+     * 有序列表，与“insertunorderedlist”命令互斥
+     * @command insertorderedlist
+     * @method execCommand
+     * @param { String } command 命令字符串
+     * @param { String } style 插入的有序列表类型，值为：decimal,lower-alpha,lower-roman,upper-alpha,upper-roman,cn,cn1,cn2,num,num1,num2
+     * @example
+     * ```javascript
+     * editor.execCommand( 'insertorderedlist','decimal');
+     * ```
+     */
+    /**
+     * 查询当前选区内容是否有序列表
+     * @command insertorderedlist
+     * @method queryCommandState
+     * @param { String } cmd 命令字符串
+     * @return { int } 如果当前选区是有序列表返回1，否则返回0
+     * @example
+     * ```javascript
+     * editor.queryCommandState( 'insertorderedlist' );
+     * ```
+     */
+    /**
+     * 查询当前选区内容是否有序列表
+     * @command insertorderedlist
+     * @method queryCommandValue
+     * @param { String } cmd 命令字符串
+     * @return { String } 返回当前有序列表的类型，值为null或decimal,lower-alpha,lower-roman,upper-alpha,upper-roman,cn,cn1,cn2,num,num1,num2
+     * @example
+     * ```javascript
+     * editor.queryCommandValue( 'insertorderedlist' );
+     * ```
+     */
+
+    /**
+     * 无序列表，与“insertorderedlist”命令互斥
+     * @command insertunorderedlist
+     * @method execCommand
+     * @param { String } command 命令字符串
+     * @param { String } style 插入的无序列表类型，值为：circle,disc,square,dash,dot
+     * @example
+     * ```javascript
+     * editor.execCommand( 'insertunorderedlist','circle');
+     * ```
+     */
+    /**
+     * 查询当前是否有word文档粘贴进来的图片
+     * @command insertunorderedlist
+     * @method insertunorderedlist
+     * @param { String } command 命令字符串
+     * @return { int } 如果当前选区是无序列表返回1，否则返回0
+     * @example
+     * ```javascript
+     * editor.queryCommandState( 'insertunorderedlist' );
+     * ```
+     */
+    /**
+     * 查询当前选区内容是否有序列表
+     * @command insertunorderedlist
+     * @method queryCommandValue
+     * @param { String } command 命令字符串
+     * @return { String } 返回当前无序列表的类型，值为null或circle,disc,square,dash,dot
+     * @example
+     * ```javascript
+     * editor.queryCommandValue( 'insertunorderedlist' );
+     * ```
+     */
+
+    me.commands['insertorderedlist'] =
+    me.commands['insertunorderedlist'] = {
+            execCommand:function (command, style) {
+
+                if (!style) {
+                    style = command.toLowerCase() == 'insertorderedlist' ? 'decimal' : 'disc';
+                }
+                var me = this,
+                    range = this.selection.getRange(),
+                    filterFn = function (node) {
+                        return   node.nodeType == 1 ? node.tagName.toLowerCase() != 'br' : !domUtils.isWhitespace(node);
+                    },
+                    tag = command.toLowerCase() == 'insertorderedlist' ? 'ol' : 'ul',
+                    frag = me.document.createDocumentFragment();
+                //去掉是因为会出现选到末尾，导致adjustmentBoundary缩到ol/ul的位置
+                //range.shrinkBoundary();//.adjustmentBoundary();
+                range.adjustmentBoundary().shrinkBoundary();
+                var bko = range.createBookmark(true),
+                    start = getLi(me.document.getElementById(bko.start)),
+                    modifyStart = 0,
+                    end =  getLi(me.document.getElementById(bko.end)),
+                    modifyEnd = 0,
+                    startParent, endParent,
+                    list, tmp;
+
+                if (start || end) {
+                    start && (startParent = start.parentNode);
+                    if (!bko.end) {
+                        end = start;
+                    }
+                    end && (endParent = end.parentNode);
+
+                    if (startParent === endParent) {
+                        while (start !== end) {
+                            tmp = start;
+                            start = start.nextSibling;
+                            if (!domUtils.isBlockElm(tmp.firstChild)) {
+                                var p = me.document.createElement('p');
+                                while (tmp.firstChild) {
+                                    p.appendChild(tmp.firstChild);
+                                }
+                                tmp.appendChild(p);
+                            }
+                            frag.appendChild(tmp);
+                        }
+                        tmp = me.document.createElement('span');
+                        startParent.insertBefore(tmp, end);
+                        if (!domUtils.isBlockElm(end.firstChild)) {
+                            p = me.document.createElement('p');
+                            while (end.firstChild) {
+                                p.appendChild(end.firstChild);
+                            }
+                            end.appendChild(p);
+                        }
+                        frag.appendChild(end);
+                        domUtils.breakParent(tmp, startParent);
+                        if (domUtils.isEmptyNode(tmp.previousSibling)) {
+                            domUtils.remove(tmp.previousSibling);
+                        }
+                        if (domUtils.isEmptyNode(tmp.nextSibling)) {
+                            domUtils.remove(tmp.nextSibling)
+                        }
+                        var nodeStyle = getStyle(startParent) || domUtils.getComputedStyle(startParent, 'list-style-type') || (command.toLowerCase() == 'insertorderedlist' ? 'decimal' : 'disc');
+                        if (startParent.tagName.toLowerCase() == tag && nodeStyle == style) {
+                            for (var i = 0, ci, tmpFrag = me.document.createDocumentFragment(); ci = frag.firstChild;) {
+                                if(domUtils.isTagNode(ci,'ol ul')){
+//                                  删除时，子列表不处理
+//                                  utils.each(domUtils.getElementsByTagName(ci,'li'),function(li){
+//                                        while(li.firstChild){
+//                                            tmpFrag.appendChild(li.firstChild);
+//                                        }
+//
+//                                    });
+                                    tmpFrag.appendChild(ci);
+                                }else{
+                                    while (ci.firstChild) {
+
+                                        tmpFrag.appendChild(ci.firstChild);
+                                        domUtils.remove(ci);
+                                    }
+                                }
+
+                            }
+                            tmp.parentNode.insertBefore(tmpFrag, tmp);
+                        } else {
+                            list = me.document.createElement(tag);
+                            setListStyle(list,style);
+                            list.appendChild(frag);
+                            tmp.parentNode.insertBefore(list, tmp);
+                        }
+
+                        domUtils.remove(tmp);
+                        list && adjustList(list, tag, style);
+                        range.moveToBookmark(bko).select();
+                        return;
+                    }
+                    //开始
+                    if (start) {
+                        while (start) {
+                            tmp = start.nextSibling;
+                            if (domUtils.isTagNode(start, 'ol ul')) {
+                                frag.appendChild(start);
+                            } else {
+                                var tmpfrag = me.document.createDocumentFragment(),
+                                    hasBlock = 0;
+                                while (start.firstChild) {
+                                    if (domUtils.isBlockElm(start.firstChild)) {
+                                        hasBlock = 1;
+                                    }
+                                    tmpfrag.appendChild(start.firstChild);
+                                }
+                                if (!hasBlock) {
+                                    var tmpP = me.document.createElement('p');
+                                    tmpP.appendChild(tmpfrag);
+                                    frag.appendChild(tmpP);
+                                } else {
+                                    frag.appendChild(tmpfrag);
+                                }
+                                domUtils.remove(start);
+                            }
+
+                            start = tmp;
+                        }
+                        startParent.parentNode.insertBefore(frag, startParent.nextSibling);
+                        if (domUtils.isEmptyNode(startParent)) {
+                            range.setStartBefore(startParent);
+                            domUtils.remove(startParent);
+                        } else {
+                            range.setStartAfter(startParent);
+                        }
+                        modifyStart = 1;
+                    }
+
+                    if (end && domUtils.inDoc(endParent, me.document)) {
+                        //结束
+                        start = endParent.firstChild;
+                        while (start && start !== end) {
+                            tmp = start.nextSibling;
+                            if (domUtils.isTagNode(start, 'ol ul')) {
+                                frag.appendChild(start);
+                            } else {
+                                tmpfrag = me.document.createDocumentFragment();
+                                hasBlock = 0;
+                                while (start.firstChild) {
+                                    if (domUtils.isBlockElm(start.firstChild)) {
+                                        hasBlock = 1;
+                                    }
+                                    tmpfrag.appendChild(start.firstChild);
+                                }
+                                if (!hasBlock) {
+                                    tmpP = me.document.createElement('p');
+                                    tmpP.appendChild(tmpfrag);
+                                    frag.appendChild(tmpP);
+                                } else {
+                                    frag.appendChild(tmpfrag);
+                                }
+                                domUtils.remove(start);
+                            }
+                            start = tmp;
+                        }
+                        var tmpDiv = domUtils.createElement(me.document, 'div', {
+                            'tmpDiv':1
+                        });
+                        domUtils.moveChild(end, tmpDiv);
+
+                        frag.appendChild(tmpDiv);
+                        domUtils.remove(end);
+                        endParent.parentNode.insertBefore(frag, endParent);
+                        range.setEndBefore(endParent);
+                        if (domUtils.isEmptyNode(endParent)) {
+                            domUtils.remove(endParent);
+                        }
+
+                        modifyEnd = 1;
+                    }
+
+
+                }
+
+                if (!modifyStart) {
+                    range.setStartBefore(me.document.getElementById(bko.start));
+                }
+                if (bko.end && !modifyEnd) {
+                    range.setEndAfter(me.document.getElementById(bko.end));
+                }
+                range.enlarge(true, function (node) {
+                    return notExchange[node.tagName];
+                });
+
+                frag = me.document.createDocumentFragment();
+
+                var bk = range.createBookmark(),
+                    current = domUtils.getNextDomNode(bk.start, false, filterFn),
+                    tmpRange = range.cloneRange(),
+                    tmpNode,
+                    block = domUtils.isBlockElm;
+
+                while (current && current !== bk.end && (domUtils.getPosition(current, bk.end) & domUtils.POSITION_PRECEDING)) {
+
+                    if (current.nodeType == 3 || dtd.li[current.tagName]) {
+                        if (current.nodeType == 1 && dtd.$list[current.tagName]) {
+                            while (current.firstChild) {
+                                frag.appendChild(current.firstChild);
+                            }
+                            tmpNode = domUtils.getNextDomNode(current, false, filterFn);
+                            domUtils.remove(current);
+                            current = tmpNode;
+                            continue;
+
+                        }
+                        tmpNode = current;
+                        tmpRange.setStartBefore(current);
+
+                        while (current && current !== bk.end && (!block(current) || domUtils.isBookmarkNode(current) )) {
+                            tmpNode = current;
+                            current = domUtils.getNextDomNode(current, false, null, function (node) {
+                                return !notExchange[node.tagName];
+                            });
+                        }
+
+                        if (current && block(current)) {
+                            tmp = domUtils.getNextDomNode(tmpNode, false, filterFn);
+                            if (tmp && domUtils.isBookmarkNode(tmp)) {
+                                current = domUtils.getNextDomNode(tmp, false, filterFn);
+                                tmpNode = tmp;
+                            }
+                        }
+                        tmpRange.setEndAfter(tmpNode);
+
+                        current = domUtils.getNextDomNode(tmpNode, false, filterFn);
+
+                        var li = range.document.createElement('li');
+
+                        li.appendChild(tmpRange.extractContents());
+                        if(domUtils.isEmptyNode(li)){
+                            var tmpNode = range.document.createElement('p');
+                            while(li.firstChild){
+                                tmpNode.appendChild(li.firstChild)
+                            }
+                            li.appendChild(tmpNode);
+                        }
+                        frag.appendChild(li);
+                    } else {
+                        current = domUtils.getNextDomNode(current, true, filterFn);
+                    }
+                }
+                range.moveToBookmark(bk).collapse(true);
+                list = me.document.createElement(tag);
+                setListStyle(list,style);
+                list.appendChild(frag);
+                range.insertNode(list);
+                //当前list上下看能否合并
+                adjustList(list, tag, style);
+                //去掉冗余的tmpDiv
+                for (var i = 0, ci, tmpDivs = domUtils.getElementsByTagName(list, 'div'); ci = tmpDivs[i++];) {
+                    if (ci.getAttribute('tmpDiv')) {
+                        domUtils.remove(ci, true)
+                    }
+                }
+                range.moveToBookmark(bko).select();
+
+            },
+            queryCommandState:function (command) {
+                var tag = command.toLowerCase() == 'insertorderedlist' ? 'ol' : 'ul';
+                var path = this.selection.getStartElementPath();
+                for(var i= 0,ci;ci = path[i++];){
+                    if(ci.nodeName == 'TABLE'){
+                        return 0
+                    }
+                    if(tag == ci.nodeName.toLowerCase()){
+                        return 1
+                    };
+                }
+                return 0;
+
+            },
+            queryCommandValue:function (command) {
+                var tag = command.toLowerCase() == 'insertorderedlist' ? 'ol' : 'ul';
+                var path = this.selection.getStartElementPath(),
+                    node;
+                for(var i= 0,ci;ci = path[i++];){
+                    if(ci.nodeName == 'TABLE'){
+                        node = null;
+                        break;
+                    }
+                    if(tag == ci.nodeName.toLowerCase()){
+                        node = ci;
+                        break;
+                    };
+                }
+                return node ? getStyle(node) || domUtils.getComputedStyle(node, 'list-style-type') : null;
+            }
+        };
+};
+
+
 
 // plugins/source.js
 /**
@@ -17476,6 +19811,7 @@ UE.plugins['video'] = function (){
     }
 })();
 
+
 // plugins/table.action.js
 /**
  * Created with JetBrains PhpStorm.
@@ -19522,6 +21858,587 @@ UE.plugins['tablesort'] = function () {
 };
 
 
+// plugins/contextmenu.js
+///import core
+///commands 右键菜单
+///commandsName  ContextMenu
+///commandsTitle  右键菜单
+/**
+ * 右键菜单
+ * @function
+ * @name baidu.editor.plugins.contextmenu
+ * @author zhanyi
+ */
+
+UE.plugins['contextmenu'] = function () {
+    var me = this;
+    me.setOpt('enableContextMenu',true);
+    if(me.getOpt('enableContextMenu') === false){
+        return;
+    }
+    var lang = me.getLang( "contextMenu" ),
+            menu,
+            items = me.options.contextMenu || [
+                {label:lang['selectall'], cmdName:'selectall'},
+                {
+                    label:lang.cleardoc,
+                    cmdName:'cleardoc',
+                    exec:function () {
+                        if ( confirm( lang.confirmclear ) ) {
+                            this.execCommand( 'cleardoc' );
+                        }
+                    }
+                },
+                '-',
+                {
+                    label:lang.unlink,
+                    cmdName:'unlink'
+                },
+                '-',
+                {
+                    group:lang.paragraph,
+                    icon:'justifyjustify',
+                    subMenu:[
+                        {
+                            label:lang.justifyleft,
+                            cmdName:'justify',
+                            value:'left'
+                        },
+                        {
+                            label:lang.justifyright,
+                            cmdName:'justify',
+                            value:'right'
+                        },
+                        {
+                            label:lang.justifycenter,
+                            cmdName:'justify',
+                            value:'center'
+                        },
+                        {
+                            label:lang.justifyjustify,
+                            cmdName:'justify',
+                            value:'justify'
+                        }
+                    ]
+                },
+                '-',
+                {
+                    group:lang.table,
+                    icon:'table',
+                    subMenu:[
+                        {
+                            label:lang.inserttable,
+                            cmdName:'inserttable'
+                        },
+                        {
+                            label:lang.deletetable,
+                            cmdName:'deletetable'
+                        },
+                        '-',
+                        {
+                            label:lang.deleterow,
+                            cmdName:'deleterow'
+                        },
+                        {
+                            label:lang.deletecol,
+                            cmdName:'deletecol'
+                        },
+                        {
+                            label:lang.insertcol,
+                            cmdName:'insertcol'
+                        },
+                        {
+                            label:lang.insertcolnext,
+                            cmdName:'insertcolnext'
+                        },
+                        {
+                            label:lang.insertrow,
+                            cmdName:'insertrow'
+                        },
+                        {
+                            label:lang.insertrownext,
+                            cmdName:'insertrownext'
+                        },
+                        '-',
+                        {
+                            label:lang.insertcaption,
+                            cmdName:'insertcaption'
+                        },
+                        {
+                            label:lang.deletecaption,
+                            cmdName:'deletecaption'
+                        },
+                        {
+                            label:lang.inserttitle,
+                            cmdName:'inserttitle'
+                        },
+                        {
+                            label:lang.deletetitle,
+                            cmdName:'deletetitle'
+                        },
+                        {
+                            label:lang.inserttitlecol,
+                            cmdName:'inserttitlecol'
+                        },
+                        {
+                            label:lang.deletetitlecol,
+                            cmdName:'deletetitlecol'
+                        },
+                        '-',
+                        {
+                            label:lang.mergecells,
+                            cmdName:'mergecells'
+                        },
+                        {
+                            label:lang.mergeright,
+                            cmdName:'mergeright'
+                        },
+                        {
+                            label:lang.mergedown,
+                            cmdName:'mergedown'
+                        },
+                        '-',
+                        {
+                            label:lang.splittorows,
+                            cmdName:'splittorows'
+                        },
+                        {
+                            label:lang.splittocols,
+                            cmdName:'splittocols'
+                        },
+                        {
+                            label:lang.splittocells,
+                            cmdName:'splittocells'
+                        },
+                        '-',
+                        {
+                            label:lang.averageDiseRow,
+                            cmdName:'averagedistributerow'
+                        },
+                        {
+                            label:lang.averageDisCol,
+                            cmdName:'averagedistributecol'
+                        },
+                        '-',
+                        {
+                            label:lang.edittd,
+                            cmdName:'edittd',
+                            exec:function () {
+                                if ( UE.ui['edittd'] ) {
+                                    new UE.ui['edittd']( this );
+                                }
+                                this.getDialog('edittd').open();
+                            }
+                        },
+                        {
+                            label:lang.edittable,
+                            cmdName:'edittable',
+                            exec:function () {
+                                if ( UE.ui['edittable'] ) {
+                                    new UE.ui['edittable']( this );
+                                }
+                                this.getDialog('edittable').open();
+                            }
+                        },
+                        {
+                            label:lang.setbordervisible,
+                            cmdName:'setbordervisible'
+                        }
+                    ]
+                },
+                {
+                    group:lang.tablesort,
+                    icon:'tablesort',
+                    subMenu:[
+                        {
+                            label:lang.enablesort,
+                            cmdName:'enablesort'
+                        },
+                        {
+                            label:lang.disablesort,
+                            cmdName:'disablesort'
+                        },
+                        '-',
+                        {
+                            label:lang.reversecurrent,
+                            cmdName:'sorttable',
+                            value:'reversecurrent'
+                        },
+                        {
+                            label:lang.orderbyasc,
+                            cmdName:'sorttable',
+                            value:'orderbyasc'
+                        },
+                        {
+                            label:lang.reversebyasc,
+                            cmdName:'sorttable',
+                            value:'reversebyasc'
+                        },
+                        {
+                            label:lang.orderbynum,
+                            cmdName:'sorttable',
+                            value:'orderbynum'
+                        },
+                        {
+                            label:lang.reversebynum,
+                            cmdName:'sorttable',
+                            value:'reversebynum'
+                        }
+                    ]
+                },
+                {
+                    group:lang.borderbk,
+                    icon:'borderBack',
+                    subMenu:[
+                        {
+                            label:lang.setcolor,
+                            cmdName:"interlacetable",
+                            exec:function(){
+                                this.execCommand("interlacetable");
+                            }
+                        },
+                        {
+                            label:lang.unsetcolor,
+                            cmdName:"uninterlacetable",
+                            exec:function(){
+                                this.execCommand("uninterlacetable");
+                            }
+                        },
+                        {
+                            label:lang.setbackground,
+                            cmdName:"settablebackground",
+                            exec:function(){
+                                this.execCommand("settablebackground",{repeat:true,colorList:["#bbb","#ccc"]});
+                            }
+                        },
+                        {
+                            label:lang.unsetbackground,
+                            cmdName:"cleartablebackground",
+                            exec:function(){
+                                this.execCommand("cleartablebackground");
+                            }
+                        },
+                        {
+                            label:lang.redandblue,
+                            cmdName:"settablebackground",
+                            exec:function(){
+                                this.execCommand("settablebackground",{repeat:true,colorList:["red","blue"]});
+                            }
+                        },
+                        {
+                            label:lang.threecolorgradient,
+                            cmdName:"settablebackground",
+                            exec:function(){
+                                this.execCommand("settablebackground",{repeat:true,colorList:["#aaa","#bbb","#ccc"]});
+                            }
+                        }
+                    ]
+                },
+                {
+                    group:lang.aligntd,
+                    icon:'aligntd',
+                    subMenu:[
+                        {
+                            cmdName:'cellalignment',
+                            value:{align:'left',vAlign:'top'}
+                        },
+                        {
+                            cmdName:'cellalignment',
+                            value:{align:'center',vAlign:'top'}
+                        },
+                        {
+                            cmdName:'cellalignment',
+                            value:{align:'right',vAlign:'top'}
+                        },
+                        {
+                            cmdName:'cellalignment',
+                            value:{align:'left',vAlign:'middle'}
+                        },
+                        {
+                            cmdName:'cellalignment',
+                            value:{align:'center',vAlign:'middle'}
+                        },
+                        {
+                            cmdName:'cellalignment',
+                            value:{align:'right',vAlign:'middle'}
+                        },
+                        {
+                            cmdName:'cellalignment',
+                            value:{align:'left',vAlign:'bottom'}
+                        },
+                        {
+                            cmdName:'cellalignment',
+                            value:{align:'center',vAlign:'bottom'}
+                        },
+                        {
+                            cmdName:'cellalignment',
+                            value:{align:'right',vAlign:'bottom'}
+                        }
+                    ]
+                },
+                {
+                    group:lang.aligntable,
+                    icon:'aligntable',
+                    subMenu:[
+                        {
+                            cmdName:'tablealignment',
+                            className: 'left',
+                            label:lang.tableleft,
+                            value:"left"
+                        },
+                        {
+                            cmdName:'tablealignment',
+                            className: 'center',
+                            label:lang.tablecenter,
+                            value:"center"
+                        },
+                        {
+                            cmdName:'tablealignment',
+                            className: 'right',
+                            label:lang.tableright,
+                            value:"right"
+                        }
+                    ]
+                },
+                '-',
+                {
+                    label:lang.insertparagraphbefore,
+                    cmdName:'insertparagraph',
+                    value:true
+                },
+                {
+                    label:lang.insertparagraphafter,
+                    cmdName:'insertparagraph'
+                },
+                {
+                    label:lang['copy'],
+                    cmdName:'copy'
+                },
+                {
+                    label:lang['paste'],
+                    cmdName:'paste'
+                }
+            ];
+    if ( !items.length ) {
+        return;
+    }
+    var uiUtils = UE.ui.uiUtils;
+
+    me.addListener( 'contextmenu', function ( type, evt ) {
+
+        var offset = uiUtils.getViewportOffsetByEvent( evt );
+        me.fireEvent( 'beforeselectionchange' );
+        if ( menu ) {
+            menu.destroy();
+        }
+        for ( var i = 0, ti, contextItems = []; ti = items[i]; i++ ) {
+            var last;
+            (function ( item ) {
+                if ( item == '-' ) {
+                    if ( (last = contextItems[contextItems.length - 1 ] ) && last !== '-' ) {
+                        contextItems.push( '-' );
+                    }
+                } else if ( item.hasOwnProperty( "group" ) ) {
+                    for ( var j = 0, cj, subMenu = []; cj = item.subMenu[j]; j++ ) {
+                        (function ( subItem ) {
+                            if ( subItem == '-' ) {
+                                if ( (last = subMenu[subMenu.length - 1 ] ) && last !== '-' ) {
+                                    subMenu.push( '-' );
+                                }else{
+                                    subMenu.splice(subMenu.length-1);
+                                }
+                            } else {
+                                if ( (me.commands[subItem.cmdName] || UE.commands[subItem.cmdName] || subItem.query) &&
+                                        (subItem.query ? subItem.query() : me.queryCommandState( subItem.cmdName )) > -1 ) {
+                                    subMenu.push( {
+                                        'label':subItem.label || me.getLang( "contextMenu." + subItem.cmdName + (subItem.value || '') )||"",
+                                        'className':'edui-for-' +subItem.cmdName + ( subItem.className ? ( ' edui-for-' + subItem.cmdName + '-' + subItem.className ) : '' ),
+                                        onclick:subItem.exec ? function () {
+                                                subItem.exec.call( me );
+                                        } : function () {
+                                            me.execCommand( subItem.cmdName, subItem.value );
+                                        }
+                                    } );
+                                }
+                            }
+                        })( cj );
+                    }
+                    if ( subMenu.length ) {
+                        function getLabel(){
+                            switch (item.icon){
+                                case "table":
+                                    return me.getLang( "contextMenu.table" );
+                                case "justifyjustify":
+                                    return me.getLang( "contextMenu.paragraph" );
+                                case "aligntd":
+                                    return me.getLang("contextMenu.aligntd");
+                                case "aligntable":
+                                    return me.getLang("contextMenu.aligntable");
+                                case "tablesort":
+                                    return lang.tablesort;
+                                case "borderBack":
+                                    return lang.borderbk;
+                                default :
+                                    return '';
+                            }
+                        }
+                        contextItems.push( {
+                            //todo 修正成自动获取方式
+                            'label':getLabel(),
+                            className:'edui-for-' + item.icon,
+                            'subMenu':{
+                                items:subMenu,
+                                editor:me
+                            }
+                        } );
+                    }
+
+                } else {
+                    //有可能commmand没有加载右键不能出来，或者没有command也想能展示出来添加query方法
+                    if ( (me.commands[item.cmdName] || UE.commands[item.cmdName] || item.query) &&
+                            (item.query ? item.query.call(me) : me.queryCommandState( item.cmdName )) > -1 ) {
+
+                        contextItems.push( {
+                            'label':item.label || me.getLang( "contextMenu." + item.cmdName ),
+                            className:'edui-for-' + (item.icon ? item.icon : item.cmdName + (item.value || '')),
+                            onclick:item.exec ? function () {
+                                item.exec.call( me );
+                            } : function () {
+                                me.execCommand( item.cmdName, item.value );
+                            }
+                        } );
+                    }
+
+                }
+
+            })( ti );
+        }
+        if ( contextItems[contextItems.length - 1] == '-' ) {
+            contextItems.pop();
+        }
+
+        menu = new UE.ui.Menu( {
+            items:contextItems,
+            className:"edui-contextmenu",
+            editor:me
+        } );
+        menu.render();
+        menu.showAt( offset );
+
+        me.fireEvent("aftershowcontextmenu",menu);
+
+        domUtils.preventDefault( evt );
+        if ( browser.ie ) {
+            var ieRange;
+            try {
+                ieRange = me.selection.getNative().createRange();
+            } catch ( e ) {
+                return;
+            }
+            if ( ieRange.item ) {
+                var range = new dom.Range( me.document );
+                range.selectNode( ieRange.item( 0 ) ).select( true, true );
+            }
+        }
+    });
+
+    // 添加复制的flash按钮
+    me.addListener('aftershowcontextmenu', function(type, menu) {
+        if (me.zeroclipboard) {
+            var items = menu.items;
+            for (var key in items) {
+                if (items[key].className == 'edui-for-copy') {
+                    me.zeroclipboard.clip(items[key].getDom());
+                }
+            }
+        }
+    });
+
+};
+
+
+// plugins/shortcutmenu.js
+///import core
+///commands       弹出菜单
+// commandsName  popupmenu
+///commandsTitle  弹出菜单
+/**
+ * 弹出菜单
+ * @function
+ * @name baidu.editor.plugins.popupmenu
+ * @author xuheng
+ */
+
+UE.plugins['shortcutmenu'] = function () {
+    var me = this,
+        menu,
+        items = me.options.shortcutMenu || [];
+
+    if (!items.length) {
+        return;
+    }
+
+    me.addListener ('contextmenu mouseup' , function (type , e) {
+        var me = this,
+            customEvt = {
+                type : type ,
+                target : e.target || e.srcElement ,
+                screenX : e.screenX ,
+                screenY : e.screenY ,
+                clientX : e.clientX ,
+                clientY : e.clientY
+            };
+
+        setTimeout (function () {
+            var rng = me.selection.getRange ();
+            if (rng.collapsed === false || type == "contextmenu") {
+
+                if (!menu) {
+                    menu = new baidu.editor.ui.ShortCutMenu ({
+                        editor : me ,
+                        items : items ,
+                        theme : me.options.theme ,
+                        className : 'edui-shortcutmenu'
+                    });
+
+                    menu.render ();
+                    me.fireEvent ("afterrendershortcutmenu" , menu);
+                }
+
+                menu.show (customEvt , !!UE.plugins['contextmenu']);
+            }
+        });
+
+        if (type == 'contextmenu') {
+            domUtils.preventDefault (e);
+            if (browser.ie9below) {
+                var ieRange;
+                try {
+                    ieRange = me.selection.getNative().createRange();
+                } catch (e) {
+                    return;
+                }
+                if (ieRange.item) {
+                    var range = new dom.Range (me.document);
+                    range.selectNode (ieRange.item (0)).select (true , true);
+
+                }
+            }
+        }
+    });
+
+    me.addListener ('keydown' , function (type) {
+        if (type == "keydown") {
+            menu && !menu.isHidden && menu.hide ();
+        }
+
+    });
+
+};
+
+
+
+
 // plugins/basestyle.js
 /**
  * B、I、sub、super命令支持
@@ -19673,6 +22590,52 @@ UE.plugins['basestyle'] = function(){
 
 
 
+// plugins/elementpath.js
+/**
+ * 选取路径命令
+ * @file
+ */
+UE.plugins['elementpath'] = function(){
+    var currentLevel,
+        tagNames,
+        me = this;
+    me.setOpt('elementPathEnabled',true);
+    if(!me.options.elementPathEnabled){
+        return;
+    }
+    me.commands['elementpath'] = {
+        execCommand : function( cmdName, level ) {
+            var start = tagNames[level],
+                range = me.selection.getRange();
+            currentLevel = level*1;
+            range.selectNode(start).select();
+        },
+        queryCommandValue : function() {
+            //产生一个副本，不能修改原来的startElementPath;
+            var parents = [].concat(this.selection.getStartElementPath()).reverse(),
+                names = [];
+            tagNames = parents;
+            for(var i=0,ci;ci=parents[i];i++){
+                if(ci.nodeType == 3) {
+                    continue;
+                }
+                var name = ci.tagName.toLowerCase();
+                if(name == 'img' && ci.getAttribute('anchorname')){
+                    name = 'anchor';
+                }
+                names[i] = name;
+                if(currentLevel == i){
+                   currentLevel = -1;
+                    break;
+                }
+            }
+            return names;
+        }
+    };
+};
+
+
+
 // plugins/formatmatch.js
 /**
  * 格式刷，只格式inline的
@@ -19812,6 +22775,349 @@ UE.plugins['formatmatch'] = function(){
 };
 
 
+
+// plugins/searchreplace.js
+///import core
+///commands 查找替换
+///commandsName  SearchReplace
+///commandsTitle  查询替换
+///commandsDialog  dialogs\searchreplace
+/**
+ * @description 查找替换
+ * @author zhanyi
+ */
+
+UE.plugin.register('searchreplace',function(){
+    var me = this;
+
+    var _blockElm = {'table':1,'tbody':1,'tr':1,'ol':1,'ul':1};
+
+    function findTextInString(textContent,opt,currentIndex){
+        var str = opt.searchStr;
+        if(opt.dir == -1){
+            textContent = textContent.split('').reverse().join('');
+            str = str.split('').reverse().join('');
+            currentIndex = textContent.length - currentIndex;
+
+        }
+        var reg = new RegExp(str,'g' + (opt.casesensitive ? '' : 'i')),match;
+
+        while(match = reg.exec(textContent)){
+            if(match.index >= currentIndex){
+                return opt.dir == -1 ? textContent.length - match.index - opt.searchStr.length : match.index;
+            }
+        }
+        return  -1
+    }
+    function findTextBlockElm(node,currentIndex,opt){
+        var textContent,index,methodName = opt.all || opt.dir == 1 ? 'getNextDomNode' : 'getPreDomNode';
+        if(domUtils.isBody(node)){
+            node = node.firstChild;
+        }
+        var first = 1;
+        while(node){
+            textContent = node.nodeType == 3 ? node.nodeValue : node[browser.ie ? 'innerText' : 'textContent'];
+            index = findTextInString(textContent,opt,currentIndex );
+            first = 0;
+            if(index!=-1){
+                return {
+                    'node':node,
+                    'index':index
+                }
+            }
+            node = domUtils[methodName](node);
+            while(node && _blockElm[node.nodeName.toLowerCase()]){
+                node = domUtils[methodName](node,true);
+            }
+            if(node){
+                currentIndex = opt.dir == -1 ? (node.nodeType == 3 ? node.nodeValue : node[browser.ie ? 'innerText' : 'textContent']).length : 0;
+            }
+
+        }
+    }
+    function findNTextInBlockElm(node,index,str){
+        var currentIndex = 0,
+            currentNode = node.firstChild,
+            currentNodeLength = 0,
+            result;
+        while(currentNode){
+            if(currentNode.nodeType == 3){
+                currentNodeLength = currentNode.nodeValue.replace(/(^[\t\r\n]+)|([\t\r\n]+$)/,'').length;
+                currentIndex += currentNodeLength;
+                if(currentIndex >= index){
+                    return {
+                        'node':currentNode,
+                        'index': currentNodeLength - (currentIndex - index)
+                    }
+                }
+            }else if(!dtd.$empty[currentNode.tagName]){
+                currentNodeLength = currentNode[browser.ie ? 'innerText' : 'textContent'].replace(/(^[\t\r\n]+)|([\t\r\n]+$)/,'').length
+                currentIndex += currentNodeLength;
+                if(currentIndex >= index){
+                    result = findNTextInBlockElm(currentNode,currentNodeLength - (currentIndex - index),str);
+                    if(result){
+                        return result;
+                    }
+                }
+            }
+            currentNode = domUtils.getNextDomNode(currentNode);
+
+        }
+    }
+
+    function searchReplace(me,opt){
+
+        var rng = me.selection.getRange(),
+            startBlockNode,
+            searchStr = opt.searchStr,
+            span = me.document.createElement('span');
+        span.innerHTML = '$$ueditor_searchreplace_key$$';
+
+        rng.shrinkBoundary(true);
+
+        //判断是不是第一次选中
+        if(!rng.collapsed){
+            rng.select();
+            var rngText = me.selection.getText();
+            if(new RegExp('^' + opt.searchStr + '$',(opt.casesensitive ? '' : 'i')).test(rngText)){
+                if(opt.replaceStr != undefined){
+                    replaceText(rng,opt.replaceStr);
+                    rng.select();
+                    return true;
+                }else{
+                    rng.collapse(opt.dir == -1)
+                }
+
+            }
+        }
+
+
+        rng.insertNode(span);
+        rng.enlargeToBlockElm(true);
+        startBlockNode = rng.startContainer;
+        var currentIndex = startBlockNode[browser.ie ? 'innerText' : 'textContent'].indexOf('$$ueditor_searchreplace_key$$');
+        rng.setStartBefore(span);
+        domUtils.remove(span);
+        var result = findTextBlockElm(startBlockNode,currentIndex,opt);
+        if(result){
+            var rngStart = findNTextInBlockElm(result.node,result.index,searchStr);
+            var rngEnd = findNTextInBlockElm(result.node,result.index + searchStr.length,searchStr);
+            rng.setStart(rngStart.node,rngStart.index).setEnd(rngEnd.node,rngEnd.index);
+
+            if(opt.replaceStr !== undefined){
+                replaceText(rng,opt.replaceStr)
+            }
+            rng.select();
+            return true;
+        }else{
+            rng.setCursor()
+        }
+
+    }
+    function replaceText(rng,str){
+
+        str = me.document.createTextNode(str);
+        rng.deleteContents().insertNode(str);
+
+    }
+    return {
+        commands:{
+            'searchreplace':{
+                execCommand:function(cmdName,opt){
+                    utils.extend(opt,{
+                        all : false,
+                        casesensitive : false,
+                        dir : 1
+                    },true);
+                    var num = 0;
+                    if(opt.all){
+
+                        var rng = me.selection.getRange(),
+                            first = me.body.firstChild;
+                        if(first && first.nodeType == 1){
+                            rng.setStart(first,0);
+                            rng.shrinkBoundary(true);
+                        }else if(first.nodeType == 3){
+                            rng.setStartBefore(first)
+                        }
+                        rng.collapse(true).select(true);
+                        if(opt.replaceStr !== undefined){
+                            me.fireEvent('saveScene');
+                        }
+                        while(searchReplace(this,opt)){
+                            num++;
+                        }
+                        if(num){
+                            me.fireEvent('saveScene');
+                        }
+                    }else{
+                        if(opt.replaceStr !== undefined){
+                            me.fireEvent('saveScene');
+                        }
+                        if(searchReplace(this,opt)){
+                            num++
+                        }
+                        if(num){
+                            me.fireEvent('saveScene');
+                        }
+
+                    }
+
+                    return num;
+                },
+                notNeedUndo:1
+            }
+        }
+    }
+});
+
+// plugins/customstyle.js
+/**
+ * 自定义样式
+ * @file
+ * @since 1.2.6.1
+ */
+
+/**
+ * 根据config配置文件里“customstyle”选项的值对匹配的标签执行样式替换。
+ * @command customstyle
+ * @method execCommand
+ * @param { String } cmd 命令字符串
+ * @example
+ * ```javascript
+ * editor.execCommand( 'customstyle' );
+ * ```
+ */
+UE.plugins['customstyle'] = function() {
+    var me = this;
+    me.setOpt({ 'customstyle':[
+        {tag:'h1',name:'tc', style:'font-size:32px;font-weight:bold;border-bottom:#ccc 2px solid;padding:0 4px 0 0;text-align:center;margin:0 0 20px 0;'},
+        {tag:'h1',name:'tl', style:'font-size:32px;font-weight:bold;border-bottom:#ccc 2px solid;padding:0 4px 0 0;text-align:left;margin:0 0 10px 0;'},
+        {tag:'span',name:'im', style:'font-size:16px;font-style:italic;font-weight:bold;line-height:18px;'},
+        {tag:'span',name:'hi', style:'font-size:16px;font-style:italic;font-weight:bold;color:rgb(51, 153, 204);line-height:18px;'}
+    ]});
+    me.commands['customstyle'] = {
+        execCommand : function(cmdName, obj) {
+            var me = this,
+                    tagName = obj.tag,
+                    node = domUtils.findParent(me.selection.getStart(), function(node) {
+                        return node.getAttribute('label');
+                    }, true),
+                    range,bk,tmpObj = {};
+            for (var p in obj) {
+               if(obj[p]!==undefined)
+                    tmpObj[p] = obj[p];
+            }
+            delete tmpObj.tag;
+            if (node && node.getAttribute('label') == obj.label) {
+                range = this.selection.getRange();
+                bk = range.createBookmark();
+                if (range.collapsed) {
+                    //trace:1732 删掉自定义标签，要有p来回填站位
+                    if(dtd.$block[node.tagName]){
+                        var fillNode = me.document.createElement('p');
+                        domUtils.moveChild(node, fillNode);
+                        node.parentNode.insertBefore(fillNode, node);
+                        domUtils.remove(node);
+                    }else{
+                        domUtils.remove(node,true);
+                    }
+
+                } else {
+
+                    var common = domUtils.getCommonAncestor(bk.start, bk.end),
+                            nodes = domUtils.getElementsByTagName(common, tagName);
+                    if(new RegExp(tagName,'i').test(common.tagName)){
+                        nodes.push(common);
+                    }
+                    for (var i = 0,ni; ni = nodes[i++];) {
+                        if (ni.getAttribute('label') == obj.label) {
+                            var ps = domUtils.getPosition(ni, bk.start),pe = domUtils.getPosition(ni, bk.end);
+                            if ((ps & domUtils.POSITION_FOLLOWING || ps & domUtils.POSITION_CONTAINS)
+                                    &&
+                                    (pe & domUtils.POSITION_PRECEDING || pe & domUtils.POSITION_CONTAINS)
+                                    )
+                                if (dtd.$block[tagName]) {
+                                    var fillNode = me.document.createElement('p');
+                                    domUtils.moveChild(ni, fillNode);
+                                    ni.parentNode.insertBefore(fillNode, ni);
+                                }
+                            domUtils.remove(ni, true);
+                        }
+                    }
+                    node = domUtils.findParent(common, function(node) {
+                        return node.getAttribute('label') == obj.label;
+                    }, true);
+                    if (node) {
+
+                        domUtils.remove(node, true);
+
+                    }
+
+                }
+                range.moveToBookmark(bk).select();
+            } else {
+                if (dtd.$block[tagName]) {
+                    this.execCommand('paragraph', tagName, tmpObj,'customstyle');
+                    range = me.selection.getRange();
+                    if (!range.collapsed) {
+                        range.collapse();
+                        node = domUtils.findParent(me.selection.getStart(), function(node) {
+                            return node.getAttribute('label') == obj.label;
+                        }, true);
+                        var pNode = me.document.createElement('p');
+                        domUtils.insertAfter(node, pNode);
+                        domUtils.fillNode(me.document, pNode);
+                        range.setStart(pNode, 0).setCursor();
+                    }
+                } else {
+
+                    range = me.selection.getRange();
+                    if (range.collapsed) {
+                        node = me.document.createElement(tagName);
+                        domUtils.setAttributes(node, tmpObj);
+                        range.insertNode(node).setStart(node, 0).setCursor();
+
+                        return;
+                    }
+
+                    bk = range.createBookmark();
+                    range.applyInlineStyle(tagName, tmpObj).moveToBookmark(bk).select();
+                }
+            }
+
+        },
+        queryCommandValue : function() {
+            var parent = domUtils.filterNodeList(
+                this.selection.getStartElementPath(),
+                function(node){return node.getAttribute('label')}
+            );
+            return  parent ? parent.getAttribute('label') : '';
+        }
+    };
+    //当去掉customstyle是，如果是块元素，用p代替
+    me.addListener('keyup', function(type, evt) {
+        var keyCode = evt.keyCode || evt.which;
+
+        if (keyCode == 32 || keyCode == 13) {
+            var range = me.selection.getRange();
+            if (range.collapsed) {
+                var node = domUtils.findParent(me.selection.getStart(), function(node) {
+                    return node.getAttribute('label');
+                }, true);
+                if (node && dtd.$block[node.tagName] && domUtils.isEmptyNode(node)) {
+                        var p = me.document.createElement('p');
+                        domUtils.insertAfter(node, p);
+                        domUtils.fillNode(me.document, p);
+                        domUtils.remove(node);
+                        range.setStart(p, 0).setCursor();
+
+
+                }
+            }
+        }
+    });
+};
 
 // plugins/catchremoteimage.js
 ///import core
@@ -20025,6 +23331,526 @@ UE.plugin.register('snapscreen', function (){
 });
 
 
+// plugins/insertparagraph.js
+/**
+ * 插入段落
+ * @file
+ * @since 1.2.6.1
+ */
+
+
+/**
+ * 插入段落
+ * @command insertparagraph
+ * @method execCommand
+ * @param { String } cmd 命令字符串
+ * @example
+ * ```javascript
+ * //editor是编辑器实例
+ * editor.execCommand( 'insertparagraph' );
+ * ```
+ */
+
+UE.commands['insertparagraph'] = {
+    execCommand : function( cmdName,front) {
+        var me = this,
+            range = me.selection.getRange(),
+            start = range.startContainer,tmpNode;
+        while(start ){
+            if(domUtils.isBody(start)){
+                break;
+            }
+            tmpNode = start;
+            start = start.parentNode;
+        }
+        if(tmpNode){
+            var p = me.document.createElement('p');
+            if(front){
+                tmpNode.parentNode.insertBefore(p,tmpNode)
+            }else{
+                tmpNode.parentNode.insertBefore(p,tmpNode.nextSibling)
+            }
+            domUtils.fillNode(me.document,p);
+            range.setStart(p,0).setCursor(false,true);
+        }
+    }
+};
+
+
+
+// plugins/webapp.js
+/**
+ * 百度应用
+ * @file
+ * @since 1.2.6.1
+ */
+
+
+/**
+ * 插入百度应用
+ * @command webapp
+ * @method execCommand
+ * @remind 需要百度APPKey
+ * @remind 百度应用主页： <a href="http://app.baidu.com/" target="_blank">http://app.baidu.com/</a>
+ * @param { Object } appOptions 应用所需的参数项， 支持的key有： title=>应用标题， width=>应用容器宽度，
+ * height=>应用容器高度，logo=>应用logo，url=>应用地址
+ * @example
+ * ```javascript
+ * //editor是编辑器实例
+ * //在编辑器里插入一个“植物大战僵尸”的APP
+ * editor.execCommand( 'webapp' , {
+ *     title: '植物大战僵尸',
+ *     width: 560,
+ *     height: 465,
+ *     logo: '应用展示的图片',
+ *     url: '百度应用的地址'
+ * } );
+ * ```
+ */
+
+//UE.plugins['webapp'] = function () {
+//    var me = this;
+//    function createInsertStr( obj, toIframe, addParagraph ) {
+//        return !toIframe ?
+//                (addParagraph ? '<p>' : '') + '<img title="'+obj.title+'" width="' + obj.width + '" height="' + obj.height + '"' +
+//                        ' src="' + me.options.UEDITOR_HOME_URL + 'themes/default/images/spacer.gif" style="background:url(' + obj.logo+') no-repeat center center; border:1px solid gray;" class="edui-faked-webapp" _url="' + obj.url + '" />' +
+//                        (addParagraph ? '</p>' : '')
+//                :
+//                '<iframe class="edui-faked-webapp" title="'+obj.title+'" width="' + obj.width + '" height="' + obj.height + '"  scrolling="no" frameborder="0" src="' + obj.url + '" logo_url = '+obj.logo+'></iframe>';
+//    }
+//
+//    function switchImgAndIframe( img2frame ) {
+//        var tmpdiv,
+//                nodes = domUtils.getElementsByTagName( me.document, !img2frame ? "iframe" : "img" );
+//        for ( var i = 0, node; node = nodes[i++]; ) {
+//            if ( node.className != "edui-faked-webapp" ){
+//                continue;
+//            }
+//            tmpdiv = me.document.createElement( "div" );
+//            tmpdiv.innerHTML = createInsertStr( img2frame ? {url:node.getAttribute( "_url" ), width:node.width, height:node.height,title:node.title,logo:node.style.backgroundImage.replace("url(","").replace(")","")} : {url:node.getAttribute( "src", 2 ),title:node.title, width:node.width, height:node.height,logo:node.getAttribute("logo_url")}, img2frame ? true : false,false );
+//            node.parentNode.replaceChild( tmpdiv.firstChild, node );
+//        }
+//    }
+//
+//    me.addListener( "beforegetcontent", function () {
+//        switchImgAndIframe( true );
+//    } );
+//    me.addListener( 'aftersetcontent', function () {
+//        switchImgAndIframe( false );
+//    } );
+//    me.addListener( 'aftergetcontent', function ( cmdName ) {
+//        if ( cmdName == 'aftergetcontent' && me.queryCommandState( 'source' ) ){
+//            return;
+//        }
+//        switchImgAndIframe( false );
+//    } );
+//
+//    me.commands['webapp'] = {
+//        execCommand:function ( cmd, obj ) {
+//            me.execCommand( "inserthtml", createInsertStr( obj, false,true ) );
+//        }
+//    };
+//};
+
+UE.plugin.register('webapp', function (){
+    var me = this;
+    function createInsertStr(obj,toEmbed){
+        return  !toEmbed ?
+            '<img title="'+obj.title+'" width="' + obj.width + '" height="' + obj.height + '"' +
+                ' src="' + me.options.UEDITOR_HOME_URL + 'themes/default/images/spacer.gif" _logo_url="'+obj.logo+'" style="background:url(' + obj.logo
+                +') no-repeat center center; border:1px solid gray;" class="edui-faked-webapp" _url="' + obj.url + '" ' +
+                (obj.align && !obj.cssfloat? 'align="' + obj.align + '"' : '') +
+                (obj.cssfloat ? 'style="float:' + obj.cssfloat + '"' : '') +
+                '/>'
+            :
+            '<iframe class="edui-faked-webapp" title="'+obj.title+'" ' +
+                (obj.align && !obj.cssfloat? 'align="' + obj.align + '"' : '') +
+                (obj.cssfloat ? 'style="float:' + obj.cssfloat + '"' : '') +
+                'width="' + obj.width + '" height="' + obj.height + '"  scrolling="no" frameborder="0" src="' + obj.url + '" logo_url = "'+obj.logo+'"></iframe>'
+
+    }
+    return {
+        outputRule: function(root){
+            utils.each(root.getNodesByTagName('img'),function(node){
+                var html;
+                if(node.getAttr('class') == 'edui-faked-webapp'){
+                    html =  createInsertStr({
+                        title:node.getAttr('title'),
+                        'width':node.getAttr('width'),
+                        'height':node.getAttr('height'),
+                        'align':node.getAttr('align'),
+                        'cssfloat':node.getStyle('float'),
+                        'url':node.getAttr("_url"),
+                        'logo':node.getAttr('_logo_url')
+                    },true);
+                    var embed = UE.uNode.createElement(html);
+                    node.parentNode.replaceChild(embed,node);
+                }
+            })
+        },
+        inputRule:function(root){
+            utils.each(root.getNodesByTagName('iframe'),function(node){
+                if(node.getAttr('class') == 'edui-faked-webapp'){
+                    var img = UE.uNode.createElement(createInsertStr({
+                        title:node.getAttr('title'),
+                        'width':node.getAttr('width'),
+                        'height':node.getAttr('height'),
+                        'align':node.getAttr('align'),
+                        'cssfloat':node.getStyle('float'),
+                        'url':node.getAttr("src"),
+                        'logo':node.getAttr('logo_url')
+                    }));
+                    node.parentNode.replaceChild(img,node);
+                }
+            })
+
+        },
+        commands:{
+            /**
+             * 插入百度应用
+             * @command webapp
+             * @method execCommand
+             * @remind 需要百度APPKey
+             * @remind 百度应用主页： <a href="http://app.baidu.com/" target="_blank">http://app.baidu.com/</a>
+             * @param { Object } appOptions 应用所需的参数项， 支持的key有： title=>应用标题， width=>应用容器宽度，
+             * height=>应用容器高度，logo=>应用logo，url=>应用地址
+             * @example
+             * ```javascript
+             * //editor是编辑器实例
+             * //在编辑器里插入一个“植物大战僵尸”的APP
+             * editor.execCommand( 'webapp' , {
+             *     title: '植物大战僵尸',
+             *     width: 560,
+             *     height: 465,
+             *     logo: '应用展示的图片',
+             *     url: '百度应用的地址'
+             * } );
+             * ```
+             */
+            'webapp':{
+                execCommand:function (cmd, obj) {
+
+                    var me = this,
+                        str = createInsertStr(utils.extend(obj,{
+                            align:'none'
+                        }), false);
+                    me.execCommand("inserthtml",str);
+                },
+                queryCommandState:function () {
+                    var me = this,
+                        img = me.selection.getRange().getClosedNode(),
+                        flag = img && (img.className == "edui-faked-webapp");
+                    return flag ? 1 : 0;
+                }
+            }
+        }
+    }
+});
+
+// plugins/template.js
+///import core
+///import plugins\inserthtml.js
+///import plugins\cleardoc.js
+///commands 模板
+///commandsName  template
+///commandsTitle  模板
+///commandsDialog  dialogs\template
+UE.plugins['template'] = function () {
+    UE.commands['template'] = {
+        execCommand:function (cmd, obj) {
+            obj.html && this.execCommand("inserthtml", obj.html);
+        }
+    };
+    this.addListener("click", function (type, evt) {
+        var el = evt.target || evt.srcElement,
+            range = this.selection.getRange();
+        var tnode = domUtils.findParent(el, function (node) {
+            if (node.className && domUtils.hasClass(node, "ue_t")) {
+                return node;
+            }
+        }, true);
+        tnode && range.selectNode(tnode).shrinkBoundary().select();
+    });
+    this.addListener("keydown", function (type, evt) {
+        var range = this.selection.getRange();
+        if (!range.collapsed) {
+            if (!evt.ctrlKey && !evt.metaKey && !evt.shiftKey && !evt.altKey) {
+                var tnode = domUtils.findParent(range.startContainer, function (node) {
+                    if (node.className && domUtils.hasClass(node, "ue_t")) {
+                        return node;
+                    }
+                }, true);
+                if (tnode) {
+                    domUtils.removeClasses(tnode, ["ue_t"]);
+                }
+            }
+        }
+    });
+};
+
+
+// plugins/music.js
+/**
+ * 插入音乐命令
+ * @file
+ */
+UE.plugin.register('music', function (){
+    var me = this;
+    function creatInsertStr(url,width,height,align,cssfloat,toEmbed){
+        return  !toEmbed ?
+                '<img ' +
+                    (align && !cssfloat? 'align="' + align + '"' : '') +
+                    (cssfloat ? 'style="float:' + cssfloat + '"' : '') +
+                    ' width="'+ width +'" height="' + height + '" _url="'+url+'" class="edui-faked-music"' +
+                    ' src="'+me.options.langPath+me.options.lang+'/images/music.png" />'
+            :
+            '<embed type="application/x-shockwave-flash" class="edui-faked-music" pluginspage="http://www.macromedia.com/go/getflashplayer"' +
+                ' src="' + url + '" width="' + width  + '" height="' + height  + '" '+ (align && !cssfloat? 'align="' + align + '"' : '') +
+                (cssfloat ? 'style="float:' + cssfloat + '"' : '') +
+                ' wmode="transparent" play="true" loop="false" menu="false" allowscriptaccess="never" allowfullscreen="true" >';
+    }
+    return {
+        outputRule: function(root){
+            utils.each(root.getNodesByTagName('img'),function(node){
+                var html;
+                if(node.getAttr('class') == 'edui-faked-music'){
+                    var cssfloat = node.getStyle('float');
+                    var align = node.getAttr('align');
+                    html =  creatInsertStr(node.getAttr("_url"), node.getAttr('width'), node.getAttr('height'), align, cssfloat, true);
+                    var embed = UE.uNode.createElement(html);
+                    node.parentNode.replaceChild(embed,node);
+                }
+            })
+        },
+        inputRule:function(root){
+            utils.each(root.getNodesByTagName('embed'),function(node){
+                if(node.getAttr('class') == 'edui-faked-music'){
+                    var cssfloat = node.getStyle('float');
+                    var align = node.getAttr('align');
+                    html =  creatInsertStr(node.getAttr("src"), node.getAttr('width'), node.getAttr('height'), align, cssfloat,false);
+                    var img = UE.uNode.createElement(html);
+                    node.parentNode.replaceChild(img,node);
+                }
+            })
+
+        },
+        commands:{
+            /**
+             * 插入音乐
+             * @command music
+             * @method execCommand
+             * @param { Object } musicOptions 插入音乐的参数项， 支持的key有： url=>音乐地址；
+             * width=>音乐容器宽度；height=>音乐容器高度；align=>音乐文件的对齐方式， 可选值有: left, center, right, none
+             * @example
+             * ```javascript
+             * //editor是编辑器实例
+             * //在编辑器里插入一个“植物大战僵尸”的APP
+             * editor.execCommand( 'music' , {
+             *     width: 400,
+             *     height: 95,
+             *     align: "center",
+             *     url: "音乐地址"
+             * } );
+             * ```
+             */
+            'music':{
+                execCommand:function (cmd, musicObj) {
+                    var me = this,
+                        str = creatInsertStr(musicObj.url, musicObj.width || 400, musicObj.height || 95, "none", false);
+                    me.execCommand("inserthtml",str);
+                },
+                queryCommandState:function () {
+                    var me = this,
+                        img = me.selection.getRange().getClosedNode(),
+                        flag = img && (img.className == "edui-faked-music");
+                    return flag ? 1 : 0;
+                }
+            }
+        }
+    }
+});
+
+// plugins/autoupload.js
+/**
+ * @description
+ * 1.拖放文件到编辑区域，自动上传并插入到选区
+ * 2.插入粘贴板的图片，自动上传并插入到选区
+ * @author Jinqn
+ * @date 2013-10-14
+ */
+UE.plugin.register('autoupload', function (){
+
+    function sendAndInsertFile(file, editor) {
+        var me  = editor;
+        //模拟数据
+        var fieldName, urlPrefix, maxSize, allowFiles, actionUrl,
+            loadingHtml, errorHandler, successHandler,
+            filetype = /image\/\w+/i.test(file.type) ? 'image':'file',
+            loadingId = 'loading_' + (+new Date()).toString(36);
+
+        fieldName = me.getOpt(filetype + 'FieldName');
+        urlPrefix = me.getOpt(filetype + 'UrlPrefix');
+        maxSize = me.getOpt(filetype + 'MaxSize');
+        allowFiles = me.getOpt(filetype + 'AllowFiles');
+        actionUrl = me.getActionUrl(me.getOpt(filetype + 'ActionName'));
+        errorHandler = function(title) {
+            var loader = me.document.getElementById(loadingId);
+            loader && domUtils.remove(loader);
+            me.fireEvent('showmessage', {
+                'id': loadingId,
+                'content': title,
+                'type': 'error',
+                'timeout': 4000
+            });
+        };
+
+        if (filetype == 'image') {
+            loadingHtml = '<img class="loadingclass" id="' + loadingId + '" src="' +
+                me.options.themePath + me.options.theme +
+                '/images/spacer.gif" title="' + (me.getLang('autoupload.loading') || '') + '" >';
+            successHandler = function(data) {
+                var link = urlPrefix + data.url,
+                    loader = me.document.getElementById(loadingId);
+                if (loader) {
+                    loader.setAttribute('src', link);
+                    loader.setAttribute('_src', link);
+                    loader.setAttribute('title', data.title || '');
+                    loader.setAttribute('alt', data.original || '');
+                    loader.removeAttribute('id');
+                    domUtils.removeClasses(loader, 'loadingclass');
+                }
+            };
+        } else {
+            loadingHtml = '<p>' +
+                '<img class="loadingclass" id="' + loadingId + '" src="' +
+                me.options.themePath + me.options.theme +
+                '/images/spacer.gif" title="' + (me.getLang('autoupload.loading') || '') + '" >' +
+                '</p>';
+            successHandler = function(data) {
+                var link = urlPrefix + data.url,
+                    loader = me.document.getElementById(loadingId);
+
+                var rng = me.selection.getRange(),
+                    bk = rng.createBookmark();
+                rng.selectNode(loader).select();
+                me.execCommand('insertfile', {'url': link});
+                rng.moveToBookmark(bk).select();
+            };
+        }
+
+        /* 插入loading的占位符 */
+        me.execCommand('inserthtml', loadingHtml);
+
+        /* 判断后端配置是否没有加载成功 */
+        if (!me.getOpt(filetype + 'ActionName')) {
+            errorHandler(me.getLang('autoupload.errorLoadConfig'));
+            return;
+        }
+        /* 判断文件大小是否超出限制 */
+        if(file.size > maxSize) {
+            errorHandler(me.getLang('autoupload.exceedSizeError'));
+            return;
+        }
+        /* 判断文件格式是否超出允许 */
+        var fileext = file.name ? file.name.substr(file.name.lastIndexOf('.')):'';
+        if ((fileext && filetype != 'image') || (allowFiles && (allowFiles.join('') + '.').indexOf(fileext.toLowerCase() + '.') == -1)) {
+            errorHandler(me.getLang('autoupload.exceedTypeError'));
+            return;
+        }
+
+        /* 创建Ajax并提交 */
+        var xhr = new XMLHttpRequest(),
+            fd = new FormData(),
+            params = utils.serializeParam(me.queryCommandValue('serverparam')) || '',
+            url = utils.formatUrl(actionUrl + (actionUrl.indexOf('?') == -1 ? '?':'&') + params);
+
+        fd.append(fieldName, file, file.name || ('blob.' + file.type.substr('image/'.length)));
+        fd.append('type', 'ajax');
+        xhr.open("post", url, true);
+        xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
+        xhr.addEventListener('load', function (e) {
+            try{
+                var json = (new Function("return " + utils.trim(e.target.response)))();
+                if (json.state == 'SUCCESS' && json.url) {
+                    successHandler(json);
+                } else {
+                    errorHandler(json.state);
+                }
+            }catch(er){
+                errorHandler(me.getLang('autoupload.loadError'));
+            }
+        });
+        xhr.send(fd);
+    }
+
+    function getPasteImage(e){
+        return e.clipboardData && e.clipboardData.items && e.clipboardData.items.length == 1 && /^image\//.test(e.clipboardData.items[0].type) ? e.clipboardData.items:null;
+    }
+    function getDropImage(e){
+        return  e.dataTransfer && e.dataTransfer.files ? e.dataTransfer.files:null;
+    }
+
+    return {
+        outputRule: function(root){
+            utils.each(root.getNodesByTagName('img'),function(n){
+                if (/\b(loaderrorclass)|(bloaderrorclass)\b/.test(n.getAttr('class'))) {
+                    n.parentNode.removeChild(n);
+                }
+            });
+            utils.each(root.getNodesByTagName('p'),function(n){
+                if (/\bloadpara\b/.test(n.getAttr('class'))) {
+                    n.parentNode.removeChild(n);
+                }
+            });
+        },
+        bindEvents:{
+            //插入粘贴板的图片，拖放插入图片
+            'ready':function(e){
+                var me = this;
+                if(window.FormData && window.FileReader) {
+                    domUtils.on(me.body, 'paste drop', function(e){
+                        var hasImg = false,
+                            items;
+                        //获取粘贴板文件列表或者拖放文件列表
+                        items = e.type == 'paste' ? getPasteImage(e):getDropImage(e);
+                        if(items){
+                            var len = items.length,
+                                file;
+                            while (len--){
+                                file = items[len];
+                                if(file.getAsFile) file = file.getAsFile();
+                                if(file && file.size > 0) {
+                                    sendAndInsertFile(file, me);
+                                    hasImg = true;
+                                }
+                            }
+                            hasImg && e.preventDefault();
+                        }
+
+                    });
+                    //取消拖放图片时出现的文字光标位置提示
+                    domUtils.on(me.body, 'dragover', function (e) {
+                        if(e.dataTransfer.types[0] == 'Files') {
+                            e.preventDefault();
+                        }
+                    });
+
+                    //设置loading的样式
+                    utils.cssRule('loading',
+                        '.loadingclass{display:inline-block;cursor:default;background: url(\''
+                            + this.options.themePath
+                            + this.options.theme +'/images/loading.gif\') no-repeat center center transparent;border:1px solid #cccccc;margin-left:1px;height: 22px;width: 22px;}\n' +
+                            '.loaderrorclass{display:inline-block;cursor:default;background: url(\''
+                            + this.options.themePath
+                            + this.options.theme +'/images/loaderror.png\') no-repeat center center transparent;border:1px solid #cccccc;margin-right:1px;height: 22px;width: 22px;' +
+                            '}',
+                        this.document);
+                }
+            }
+        }
+    }
+});
+
 // plugins/autosave.js
 UE.plugin.register('autosave', function (){
 
@@ -20154,6 +23980,421 @@ UE.plugin.register('autosave', function (){
         }
     }
 
+});
+
+// plugins/charts.js
+UE.plugin.register('charts', function (){
+
+    var me = this;
+
+    return {
+        bindEvents: {
+            'chartserror': function () {
+            }
+        },
+        commands:{
+            'charts': {
+                execCommand: function ( cmd, data ) {
+
+                    var tableNode = domUtils.findParentByTagName(this.selection.getRange().startContainer, 'table', true),
+                        flagText = [],
+                        config = {};
+
+                    if ( !tableNode ) {
+                        return false;
+                    }
+
+                    if ( !validData( tableNode ) ) {
+                        me.fireEvent( "chartserror" );
+                        return false;
+                    }
+
+                    config.title = data.title || '';
+                    config.subTitle = data.subTitle || '';
+                    config.xTitle = data.xTitle || '';
+                    config.yTitle = data.yTitle || '';
+                    config.suffix = data.suffix || '';
+                    config.tip = data.tip || '';
+                    //数据对齐方式
+                    config.dataFormat = data.tableDataFormat || '';
+                    //图表类型
+                    config.chartType = data.chartType || 0;
+
+                    for ( var key in config ) {
+
+                        if ( !config.hasOwnProperty( key ) ) {
+                            continue;
+                        }
+
+                        flagText.push( key+":"+config[ key ] );
+
+                    }
+
+                    tableNode.setAttribute( "data-chart", flagText.join( ";" ) );
+                    domUtils.addClass( tableNode, "edui-charts-table" );
+
+
+
+                },
+                queryCommandState: function ( cmd, name ) {
+
+                    var tableNode = domUtils.findParentByTagName(this.selection.getRange().startContainer, 'table', true);
+                    return tableNode && validData( tableNode ) ? 0 : -1;
+
+                }
+            }
+        },
+        inputRule:function(root){
+            utils.each(root.getNodesByTagName('table'),function( tableNode ){
+
+                if ( tableNode.getAttr("data-chart") !== undefined ) {
+                    tableNode.setAttr("style");
+                }
+
+            })
+
+        },
+        outputRule:function(root){
+            utils.each(root.getNodesByTagName('table'),function( tableNode ){
+
+                if ( tableNode.getAttr("data-chart") !== undefined ) {
+                    tableNode.setAttr("style", "display: none;");
+                }
+
+            })
+
+        }
+    }
+
+    function validData ( table ) {
+
+        var firstRows = null,
+            cellCount = 0;
+
+        //行数不够
+        if ( table.rows.length < 2 ) {
+            return false;
+        }
+
+        //列数不够
+        if ( table.rows[0].cells.length < 2 ) {
+            return false;
+        }
+
+        //第一行所有cell必须是th
+        firstRows = table.rows[ 0 ].cells;
+        cellCount = firstRows.length;
+
+        for ( var i = 0, cell; cell = firstRows[ i ]; i++ ) {
+
+            if ( cell.tagName.toLowerCase() !== 'th' ) {
+                return false;
+            }
+
+        }
+
+        for ( var i = 1, row; row = table.rows[ i ]; i++ ) {
+
+            //每行单元格数不匹配， 返回false
+            if ( row.cells.length != cellCount ) {
+                return false;
+            }
+
+            //第一列不是th也返回false
+            if ( row.cells[0].tagName.toLowerCase() !== 'th' ) {
+                return false;
+            }
+
+            for ( var j = 1, cell; cell = row.cells[ j ]; j++ ) {
+
+                var value = utils.trim( ( cell.innerText || cell.textContent || '' ) );
+
+                value = value.replace( new RegExp( UE.dom.domUtils.fillChar, 'g' ), '' ).replace( /^\s+|\s+$/g, '' );
+
+                //必须是数字
+                if ( !/^\d*\.?\d+$/.test( value ) ) {
+                    return false;
+                }
+
+            }
+
+        }
+
+        return true;
+
+    }
+
+});
+
+// plugins/section.js
+/**
+ * 目录大纲支持插件
+ * @file
+ * @since 1.3.0
+ */
+UE.plugin.register('section', function (){
+    /* 目录节点对象 */
+    function Section(option){
+        this.tag = '';
+        this.level = -1,
+            this.dom = null;
+        this.nextSection = null;
+        this.previousSection = null;
+        this.parentSection = null;
+        this.startAddress = [];
+        this.endAddress = [];
+        this.children = [];
+    }
+    function getSection(option) {
+        var section = new Section();
+        return utils.extend(section, option);
+    }
+    function getNodeFromAddress(startAddress, root) {
+        var current = root;
+        for(var i = 0;i < startAddress.length; i++) {
+            if(!current.childNodes) return null;
+            current = current.childNodes[startAddress[i]];
+        }
+        return current;
+    }
+
+    var me = this;
+
+    return {
+        bindMultiEvents:{
+            type: 'aftersetcontent afterscencerestore',
+            handler: function(){
+                me.fireEvent('updateSections');
+            }
+        },
+        bindEvents:{
+            /* 初始化、拖拽、粘贴、执行setcontent之后 */
+            'ready': function (){
+                me.fireEvent('updateSections');
+                domUtils.on(me.body, 'drop paste', function(){
+                    me.fireEvent('updateSections');
+                });
+            },
+            /* 执行paragraph命令之后 */
+            'afterexeccommand': function (type, cmd) {
+                if(cmd == 'paragraph') {
+                    me.fireEvent('updateSections');
+                }
+            },
+            /* 部分键盘操作，触发updateSections事件 */
+            'keyup': function (type, e) {
+                var me = this,
+                    range = me.selection.getRange();
+                if(range.collapsed != true) {
+                    me.fireEvent('updateSections');
+                } else {
+                    var keyCode = e.keyCode || e.which;
+                    if(keyCode == 13 || keyCode == 8 || keyCode == 46) {
+                        me.fireEvent('updateSections');
+                    }
+                }
+            }
+        },
+        commands:{
+            'getsections': {
+                execCommand: function (cmd, levels) {
+                    var levelFn = levels || ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
+
+                    for (var i = 0; i < levelFn.length; i++) {
+                        if (typeof levelFn[i] == 'string') {
+                            levelFn[i] = function(fn){
+                                return function(node){
+                                    return node.tagName == fn.toUpperCase()
+                                };
+                            }(levelFn[i]);
+                        } else if (typeof levelFn[i] != 'function') {
+                            levelFn[i] = function (node) {
+                                return null;
+                            }
+                        }
+                    }
+                    function getSectionLevel(node) {
+                        for (var i = 0; i < levelFn.length; i++) {
+                            if (levelFn[i](node)) return i;
+                        }
+                        return -1;
+                    }
+
+                    var me = this,
+                        Directory = getSection({'level':-1, 'title':'root'}),
+                        previous = Directory;
+
+                    function traversal(node, Directory) {
+                        var level,
+                            tmpSection = null,
+                            parent,
+                            child,
+                            children = node.childNodes;
+                        for (var i = 0, len = children.length; i < len; i++) {
+                            child = children[i];
+                            level = getSectionLevel(child);
+                            if (level >= 0) {
+                                var address = me.selection.getRange().selectNode(child).createAddress(true).startAddress,
+                                    current = getSection({
+                                        'tag': child.tagName,
+                                        'title': child.innerText || child.textContent || '',
+                                        'level': level,
+                                        'dom': child,
+                                        'startAddress': utils.clone(address, []),
+                                        'endAddress': utils.clone(address, []),
+                                        'children': []
+                                    });
+                                previous.nextSection = current;
+                                current.previousSection = previous;
+                                parent = previous;
+                                while(level <= parent.level){
+                                    parent = parent.parentSection;
+                                }
+                                current.parentSection = parent;
+                                parent.children.push(current);
+                                tmpSection = previous = current;
+                            } else {
+                                child.nodeType === 1 && traversal(child, Directory);
+                                tmpSection && tmpSection.endAddress[tmpSection.endAddress.length - 1] ++;
+                            }
+                        }
+                    }
+                    traversal(me.body, Directory);
+                    return Directory;
+                },
+                notNeedUndo: true
+            },
+            'movesection': {
+                execCommand: function (cmd, sourceSection, targetSection, isAfter) {
+
+                    var me = this,
+                        targetAddress,
+                        target;
+
+                    if(!sourceSection || !targetSection || targetSection.level == -1) return;
+
+                    targetAddress = isAfter ? targetSection.endAddress:targetSection.startAddress;
+                    target = getNodeFromAddress(targetAddress, me.body);
+
+                    /* 判断目标地址是否被源章节包含 */
+                    if(!targetAddress || !target || isContainsAddress(sourceSection.startAddress, sourceSection.endAddress, targetAddress)) return;
+
+                    var startNode = getNodeFromAddress(sourceSection.startAddress, me.body),
+                        endNode = getNodeFromAddress(sourceSection.endAddress, me.body),
+                        current,
+                        nextNode;
+
+                    if(isAfter) {
+                        current = endNode;
+                        while ( current && !(domUtils.getPosition( startNode, current ) & domUtils.POSITION_FOLLOWING) ) {
+                            nextNode = current.previousSibling;
+                            domUtils.insertAfter(target, current);
+                            if(current == startNode) break;
+                            current = nextNode;
+                        }
+                    } else {
+                        current = startNode;
+                        while ( current && !(domUtils.getPosition( current, endNode ) & domUtils.POSITION_FOLLOWING) ) {
+                            nextNode = current.nextSibling;
+                            target.parentNode.insertBefore(current, target);
+                            if(current == endNode) break;
+                            current = nextNode;
+                        }
+                    }
+
+                    me.fireEvent('updateSections');
+
+                    /* 获取地址的包含关系 */
+                    function isContainsAddress(startAddress, endAddress, addressTarget){
+                        var isAfterStartAddress = false,
+                            isBeforeEndAddress = false;
+                        for(var i = 0; i< startAddress.length; i++){
+                            if(i >= addressTarget.length) break;
+                            if(addressTarget[i] > startAddress[i]) {
+                                isAfterStartAddress = true;
+                                break;
+                            } else if(addressTarget[i] < startAddress[i]) {
+                                break;
+                            }
+                        }
+                        for(var i = 0; i< endAddress.length; i++){
+                            if(i >= addressTarget.length) break;
+                            if(addressTarget[i] < startAddress[i]) {
+                                isBeforeEndAddress = true;
+                                break;
+                            } else if(addressTarget[i] > startAddress[i]) {
+                                break;
+                            }
+                        }
+                        return isAfterStartAddress && isBeforeEndAddress;
+                    }
+                }
+            },
+            'deletesection': {
+                execCommand: function (cmd, section, keepChildren) {
+                    var me = this;
+
+                    if(!section) return;
+
+                    function getNodeFromAddress(startAddress) {
+                        var current = me.body;
+                        for(var i = 0;i < startAddress.length; i++) {
+                            if(!current.childNodes) return null;
+                            current = current.childNodes[startAddress[i]];
+                        }
+                        return current;
+                    }
+
+                    var startNode = getNodeFromAddress(section.startAddress),
+                        endNode = getNodeFromAddress(section.endAddress),
+                        current = startNode,
+                        nextNode;
+
+                    if(!keepChildren) {
+                        while ( current && domUtils.inDoc(endNode, me.document) && !(domUtils.getPosition( current, endNode ) & domUtils.POSITION_FOLLOWING) ) {
+                            nextNode = current.nextSibling;
+                            domUtils.remove(current);
+                            current = nextNode;
+                        }
+                    } else {
+                        domUtils.remove(current);
+                    }
+
+                    me.fireEvent('updateSections');
+                }
+            },
+            'selectsection': {
+                execCommand: function (cmd, section) {
+                    if(!section && !section.dom) return false;
+                    var me = this,
+                        range = me.selection.getRange(),
+                        address = {
+                            'startAddress':utils.clone(section.startAddress, []),
+                            'endAddress':utils.clone(section.endAddress, [])
+                        };
+                    address.endAddress[address.endAddress.length - 1]++;
+                    range.moveToAddress(address).select().scrollToView();
+                    return true;
+                },
+                notNeedUndo: true
+            },
+            'scrolltosection': {
+                execCommand: function (cmd, section) {
+                    if(!section && !section.dom) return false;
+                    var me = this,
+                        range = me.selection.getRange(),
+                        address = {
+                            'startAddress':section.startAddress,
+                            'endAddress':section.endAddress
+                        };
+                    address.endAddress[address.endAddress.length - 1]++;
+                    range.moveToAddress(address).scrollToView();
+                    return true;
+                },
+                notNeedUndo: true
+            }
+        }
+    }
 });
 
 // plugins/simpleupload.js
@@ -25184,7 +29425,6 @@ UE.registerUI('autosave', function(editor) {
     })
 
 });
-
 
 
 
