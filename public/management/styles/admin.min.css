@@ -2,3 +2,12 @@
 .register-group>label{
     color:#1abc9c;
 }
+.vertical-middle{
+    vertical-align:middle!important;
+}
+.glyphicon-class{
+    margin-left:10px;
+}
+.mr10{
+    margin-right:10px;
+}
