@@ -27,9 +27,9 @@ exports.create = function(req,res){
     })
 };
 
-/*╩Ях║акarticle╪╞╨о╣дкЫспнд╣╣║ё тз╡Ия╞╧ЩЁлжпй╧сцак
-еепРё╛ ╩Ях║╣днд╣╣╟╢уу created ╫ЬппеепР║ё ╩╧й╧сцак pupulate() ╥╫╥╗╫╚ user ╤тоС╣д fristName ║╒
-lastName ╨м fullName йТптлНЁД╣╫ак articles ╤тоС╣д creator йТптжп║ё*/
+/*О©╫О©╫х║О©╫О©╫articleО©╫О©╫О©╫о╣О©╫О©╫О©╫О©╫О©╫О©╫д╣О©╫О©╫О©╫ О©╫з╡О©╫я╞О©╫О©╫О©╫О©╫О©╫О©╫й╧О©╫О©╫О©╫О©╫
+О©╫О©╫О©╫О©╫ О©╫О©╫х║О©╫О©╫О©╫д╣О©╫О©╫О©╫О©╫О©╫ created О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫ О©╫О©╫й╧О©╫О©╫О©╫О©╫ pupulate() О©╫О©╫О©╫О©╫О©╫О©╫ user О©╫О©╫О©╫О©╫О©╫ fristName О©╫О©╫
+lastName О©╫О©╫ fullName О©╫О©╫О©╫О©╫О©╫О©╫Д╣╫О©╫О©╫ articles О©╫О©╫О©╫О©╫О©╫ creator О©╫О©╫О©╫О©╫О©╫п║О©╫*/
 exports.list = function(req, res) {
     Article.find().sort('-created').populate('creator', 'firstName lastName fullName').
         exec(function(err, articles) {
@@ -70,7 +70,6 @@ exports.read = function(req, res) {
 };
 
 exports.render = function( req,res ){
-    console.log(req.article);
     res.render('article',req.article);
 };
 

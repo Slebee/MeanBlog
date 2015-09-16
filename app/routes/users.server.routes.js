@@ -14,6 +14,5 @@ module.exports = function(app){
             failureFlash:true
         }));
     app.get('/signout', users.signout);
-    //当请求地址带有userID
     app.param('userId',users.userByID);
 };
