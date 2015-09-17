@@ -17,12 +17,16 @@ var ArticleSchema = new Schema({
         default: '',
         trim: true
     },
-    summary:{
-        type:String
-    },
     creator: {
         type: Schema.ObjectId,
         ref: 'User'
     }
 });
+
+//虚拟属性--概述，概述使用虚拟属性的方式，并不需要存储到数据库中
+ArticleSchema.virtual('summary').get(function(){
+    var reg = new RegExp("<[^<]*>", "gi");
+    return this.content.replace(reg,'').substring(0,250) + '...';
+});
+ArticleSchema.set('toJSON', { getters: true, virtuals: true});
 mongoose.model('Article', ArticleSchema);

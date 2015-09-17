@@ -7,7 +7,7 @@
   <link href="//cdn.bootcss.com/animate.css/3.4.0/animate.min.css" rel="stylesheet">
   <link href="/blog/styles/slebee.css" rel="stylesheet">
 </head>
-<body ng-controller="mainController">
+<body ng-controller="mainController" ng-class="{true:'no-scroll',false:''}[commonServices.articleDetailisShow]">
 <header class="jumbotron rubberBand animated">
   <div class="container text-center">
     <div class="avatar"></div>
@@ -25,11 +25,9 @@
       <div class="row article-list-item sSlideInUp animated" data-ng-repeat="article in articles" style="animation-delay:{{$index*times}}s;">
         <h3><a data-ng-bind="article.title" href="#!/articles/{{article._id}}" ng-click="setUrl(article._id)"></a> <span class="comment-count pull-right"><span id = "sourceId::{{article._id}}" class = "cy_cmt_count" ></span></span></h3>
         <p class="content" data-ng-bind="article.summary"></p>
-        <p class="parm"><small class="pull-left">Created By {{article.creator.fullName}}</small><small class="pull-right" data-ng-bind="article.created | date:'medium'"></small></p>
+        <p class="parm"><small class="pull-left">Created By <span data-ng-bind="article.creator.fullName"></span></small><small class="pull-right" data-ng-bind="article.created | date:'medium'"></small></p>
       </div>
-      <div class="row">
-        <div class="load-more">Load More</div>
-      </div>
+     <!-- <div class="load-more">Load More</div>-->
     </div>
 </div>
 <!-- row end -->

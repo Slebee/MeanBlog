@@ -15,7 +15,7 @@ exports.create = function(req,res){
     var article = new Article(req.body);
     var reg = new RegExp("<[^<]*>", "gi");
     article.creator = req.user;
-    article.summary = req.body.content.replace(reg,'').substring(0,500) + '...';
+    /*article.summary = req.body.content.replace(reg,'').substring(0,250) + '...';*/
     article.save(function(err){
         if (err){
             return res.stateus(400).send({
@@ -27,9 +27,7 @@ exports.create = function(req,res){
     })
 };
 
-/*��ȡ��article���ϵ������ĵ��� �ڲ�ѯ������ʹ����
-���� ��ȡ���ĵ����� created �������� ��ʹ���� pupulate() ������ user ����� fristName ��
-lastName �� fullName ������䵽�� articles ����� creator �����С�*/
+
 exports.list = function(req, res) {
     Article.find().sort('-created').populate('creator', 'firstName lastName fullName').
         exec(function(err, articles) {
@@ -43,13 +41,15 @@ exports.list = function(req, res) {
         });
 };
 exports.listSummary = function(req, res) {
-    Article.find({},'title summary creator created').sort('-created').populate('creator', 'firstName lastName fullName').
+    /*Article.find({},'title summary creator created').sort('-created').populate('creator', 'firstName lastName fullName').*/
+    Article.find().sort('-created').populate('creator', 'firstName lastName fullName').
         exec(function(err, articles) {
             if (err) {
                 return res.status(400).send({
                     message: getErrorMessage(err)
                 });
             } else {
+                articles.content=null;
                 res.json( articles );
             }
         });
