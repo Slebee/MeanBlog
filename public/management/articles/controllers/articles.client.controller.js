@@ -24,6 +24,7 @@ angular.module('articles').controller('ArticlesController', ['$scope',
             });
         };
         $scope.update = function() {
+            $scope.article.content = getContent();
             $scope.article.$update(function() {
                 $location.path('articles/' + $scope.article._id);
             }, function(errorResponse) {
