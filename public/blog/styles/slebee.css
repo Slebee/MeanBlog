@@ -164,10 +164,19 @@ a.close{
     display: block;
     width:60px;
     height:60px;
-    background-color:#ccc;
+    background:url("/images/close.png");
     position: fixed;
     right:20px;
-    top:20px;
+    top:10px;
+    opacity: .7;
+    -webkit-transition: all .5s;
+    -moz-transition: all .5s;
+    -ms-transition: all .5s;
+    -o-transition: all .5s;
+    transition: all .5s;
+}
+a.close:hover{
+    opacity:1;
 }
 .part-article{
     padding:20px 20px;
