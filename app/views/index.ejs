@@ -4,8 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no">
   <title>Slebee</title>
-  <!--<link rel="stylesheet" type="text/css" href="styles/slebee.min.css">-->
-  <!--<link href="//cdn.bootcss.com/bootstrap/3.3.5/css/bootstrap.min.css" rel="stylesheet">-->
+
   <link href="//cdn.bootcss.com/animate.css/3.4.0/animate.min.css" rel="stylesheet">
   <link href="/blog/styles/slebee.css" rel="stylesheet">
 </head>
@@ -23,40 +22,17 @@
       <div class="line"></div>
       <h1 class="text-left list-h1">Article</h1>
     </div>
-    <div class="article-list-wrap" ng-controller="ArticlesController" data-ng-init="find()">
-      <div class="row article-list-item" data-ng-repeat="article in articles">
-        <h3><a data-ng-bind="article.title" href="#!/articles/{{article._id}}" ng-click="setUrl(article._id)"></a> <span class="comment-count pull-right"><span id = "sourceId::{{article._id}}" class = "cy_cmt_count" ></span></span></h3>
-        <p class="content" data-ng-bind="article.summary"></p>
-        <p class="parm"><small class="pull-left">Created By {{article.creator.fullName}}</small><small class="pull-right" data-ng-bind="article.created | date:'medium'"></small></p>
+    <div class="article-list-wrap">
+      <div class="row article-list-item">
+        <h3><a >aa</a> <span class="comment-count pull-right"><span class = "cy_cmt_count" >1</span></span></h3>
+        <p class="content">sss</p>
+        <p class="parm"><small class="pull-left">Created By </small><small class="pull-right" >2015</small></p>
       </div>
       <div class="row">
         <div class="load-more">Load More</div>
       </div>
     </div>
 </div>
-<!-- row end -->
 
-<!-- article start -->
-<section class="article-detail-wrap view-animate"  ng-view=""></section>
-
-
-<!-- article end -->
 </body>
-
-
-
-
-<script src="/lib/jquery-2.1.4.min.js"></script>
-<script src="/lib/angular/angular.js"></script>
-<script src="/lib/angular-route/angular-route.js"></script>
-<script src="/lib/angular-animate/angular-animate.js"></script>
-<script src="/lib/angular-resource/angular-resource.js"></script>
-<script src="/blog/articles/blog.article.client.module.js"></script>
-<script src="/blog/articles/directives/comment.client.directive.js"></script>
-<script src="/blog/articles/services/blog.articles.client.service.js"></script>
-<script src="/blog/articles/controllers/blog.articles.client.controller.js"></script>
-<script src="/blog/articles/config/blog.articles.client.routes.js"></script>
-<script src="/blog/blog.application.js"></script>
-
-
 </html>
