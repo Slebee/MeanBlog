@@ -4,15 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no">
   <title>Slebee</title>
+
   <link href="//cdn.bootcss.com/animate.css/3.4.0/animate.min.css" rel="stylesheet">
   <link href="/blog/styles/slebee.css" rel="stylesheet">
+  <script src="/blog/js/common.js"></script>
 </head>
-<body ng-controller="mainController" ng-class="{true:'no-scroll',false:''}[commonServices.articleDetailisShow]">
+<body>
 <header class="jumbotron rubberBand animated">
   <div class="container text-center">
     <div class="avatar"></div>
     <h1 class="hello">SLEBEE</h1>
-    <p class="introduction">Welcome to my Blog</p>
+    <p class="introduction">欢迎来到我的博客</p>
   </div>
 </header>
 <!-- row start -->
@@ -21,46 +23,49 @@
       <div class="line"></div>
       <h1 class="text-left list-h1">Article</h1>
     </div>
-    <div class="article-list-wrap" ng-controller="ArticlesController" data-ng-init="find();times=0.1">
-      <div class="row article-list-item sSlideInUp animated" data-ng-repeat="article in articles" style="animation-delay:{{$index*times}}s;">
-        <h3><a data-ng-bind="article.title" href="#!/articles/{{article._id}}" ng-click="setUrl(article._id)"></a> <span class="comment-count pull-right"><span id = "sourceId::{{article._id}}" class = "cy_cmt_count" ></span></span></h3>
-        <p class="content" data-ng-bind="article.summary"></p>
-        <p class="parm"><small class="pull-left">Created By <span data-ng-bind="article.creator.fullName"></span></small><small class="pull-right" data-ng-bind="article.created | date:'medium'"></small></p>
-      </div>
-     <!-- <div class="load-more">Load More</div>-->
+    <div class="article-list-wrap" id="listWrap">
+      Loading……
     </div>
 </div>
-<!-- row end -->
-
-<!-- article start -->
-<section class="article-detail-wrap view-animate"  ng-view=""></section>
-<!-- article end -->
-
-<!-- lightbox start -->
-<light-box></light-box>
-<!-- lightbox end -->
+<section class="article-detail-wrap" id="iframeWrap">
+  <iframe src="" id="iframeCon" style="width:100%;height:100%"></iframe>
+</section>
+<a class="close"></a>
 </body>
-
-<script src="/lib/jquery-2.1.4.min.js"></script>
-<script src="/lib/angular/angular.js"></script>
-<script src="/lib/angular-route/angular-route.js"></script>
-<script src="/lib/angular-animate/angular-animate.js"></script>
-<script src="/lib/angular-resource/angular-resource.js"></script>
-<script src="/blog/articles/blog.article.client.module.js"></script>
-<script src="/blog/articles/directives/comment.client.directive.js"></script>
-<script src="/blog/articles/services/blog.articles.client.service.js"></script>
-<script src="/blog/articles/controllers/blog.articles.client.controller.js"></script>
-<script src="/blog/articles/config/blog.articles.client.routes.js"></script>
-
-<script src="/blog/blog.application.js"></script>
-<script src="/blog/blog.common.services.js"></script>
-<script src="/blog/blog.common.directives.js"></script>
-<script src="/blog/blog.common.controllers.js"></script>
-
 <script>
+  getArticleList();
+  function getArticleList(){
+    S.ajax({
+      url:'/api/blog/articles',
+      sccuess:function(data){
+        printArticle( JSON.parse(data) );
+      }
+    })
+  }
+  function printArticle(data){
+    var htmlStr = '';
+    console.log(data)
+    for( var i = 0;i<data.length;i++ ){
+      htmlStr += '<div class="row article-list-item animated sSlideInUp" style="animation-delay: '+ i*.1 +'s;">'+
+                  '<h3><a onclick="showArticle(\''+ data[i]._id +'\')">'+ data[i].title +'</a> <span class="comment-count pull-right"><span class = "cy_cmt_count" id = "sourceId::'+data[i]._id+'" ></span></span></h3>'+
+                  '<p class="content">' + data[i].summary + '</p>'+
+                  '<p class="parm"><small class="pull-left">Created By '+ data[i].creator.fullName +'</small><small class="pull-right" >'+ data[i].created +'</small></p>'+
+                  '</div>'
+    }
+    S.getEle('#listWrap').html(htmlStr);
+    var s = document.createElement('script');
+    s.setAttribute('id','cy_cmt_num');
+    s.setAttribute('src','http://changyan.sohu.com/upload/plugins/plugins.list.count.js?clientId=cyrTELar4');
+    console.log(document.body)
+    document.body.appendChild(s);
+  }
+  function showArticle(id){
+    S.getEle('#iframeCon').eq(0).setAttribute('src','/articles/'+id);
+    S.getEle('#iframeWrap').eq(0).setAttribute('style',"z-index:10;opacity:1");
+    window.location.hash='aa'
+  }
   window.onhashchange = function(){
-    var reg = /articles/g;
-    reg.test( window.location.href ) ? setTimeout(function(){$('body').addClass('no-scroll')},0): setTimeout(function(){$('body').removeClass('no-scroll')},0);
+    alert(1)
   }
 </script>
 </html>
