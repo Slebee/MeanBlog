@@ -76,5 +76,20 @@
             fn(i,this.elmArr[i]);
         }
     };
+    S.domReady = function(fn){
+        if(document.addEventListener){
+            document.addEventListener('DOMContentLoaded',function(){
+                document.removeEventListener('DOMContentLoaded',arguments.callee,false);
+                fn();
+            },false);
+        }else if(document.attachEvent){
+            document.attachEvent('onreadystatechange',function(){
+                if(document.readyState=='complete'){
+                    document.detachEvent('onreadystatechange',arguments.callee);
+                    fn();
+                }
+            });
+        }
+    };
     root.S = S;
 }.call(this));

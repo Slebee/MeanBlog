@@ -32,40 +32,5 @@
 </section>
 <a class="close"></a>
 </body>
-<script>
-  getArticleList();
-  function getArticleList(){
-    S.ajax({
-      url:'/api/blog/articles',
-      sccuess:function(data){
-        printArticle( JSON.parse(data) );
-      }
-    })
-  }
-  function printArticle(data){
-    var htmlStr = '';
-    console.log(data)
-    for( var i = 0;i<data.length;i++ ){
-      htmlStr += '<div class="row article-list-item animated sSlideInUp" style="animation-delay: '+ i*.1 +'s;">'+
-                  '<h3><a onclick="showArticle(\''+ data[i]._id +'\')">'+ data[i].title +'</a> <span class="comment-count pull-right"><span class = "cy_cmt_count" id = "sourceId::'+data[i]._id+'" ></span></span></h3>'+
-                  '<p class="content">' + data[i].summary + '</p>'+
-                  '<p class="parm"><small class="pull-left">Created By '+ data[i].creator.fullName +'</small><small class="pull-right" >'+ data[i].created +'</small></p>'+
-                  '</div>'
-    }
-    S.getEle('#listWrap').html(htmlStr);
-    var s = document.createElement('script');
-    s.setAttribute('id','cy_cmt_num');
-    s.setAttribute('src','http://changyan.sohu.com/upload/plugins/plugins.list.count.js?clientId=cyrTELar4');
-    console.log(document.body)
-    document.body.appendChild(s);
-  }
-  function showArticle(id){
-    S.getEle('#iframeCon').eq(0).setAttribute('src','/articles/'+id);
-    S.getEle('#iframeWrap').eq(0).setAttribute('style',"z-index:10;opacity:1");
-    window.location.hash='aa'
-  }
-  window.onhashchange = function(){
-    alert(1)
-  }
-</script>
+<script src="/blog/js/index.js"></script>
 </html>
