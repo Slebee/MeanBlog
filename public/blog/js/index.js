@@ -27,24 +27,43 @@ S.domReady(function(){
         s.setAttribute('src','http://changyan.sohu.com/upload/plugins/plugins.list.count.js?clientId=cyrTELar4');
         document.body.appendChild(s);
     }
-
-//show iframe about article detail
-    function showArticle(id){
-        S.getEle('#iframeCon').eq(0).setAttribute('src','/articles/'+id);
-        S.getEle('#iframeWrap').eq(0).setAttribute('style',"z-index:10;opacity:1");
-        var stateObject = {};
-        var title = "Wow Title";
-        var newUrl = 'articles/' + id;
-        history.pushState(stateObject,title,newUrl);
-    }
-    function initHistory(){
-
-    }
-    window.addEventListener('popstate', function(event) {
-        history.readState(event.state);
-    });
-    function readState(data){
-        alert(data.id);
-    }
     getArticleList();
 });
+//show iframe about article detail
+function showArticle(id){
+    S.getEle('#iframeCon').eq(0).setAttribute('src','/articles/'+id);
+    S.getEle('#iframeWrap').eq(0).setAttribute('style',"z-index:10;opacity:1");
+
+    history.pushState({
+        id:id
+    },'','articles/'+id);
+    _history[1] = 'articles/'+id;
+}
+var _history = [];
+history.pushState({
+    id:0
+},'','http://localhost:3000');
+_history[0] = 'http://localhost:3000';
+window.onpopstate = function(event){
+    /*readState(event.state,function(data){
+        console.log(data)
+    });*/
+    console.log(event.state)
+    if( event && event.state ){
+        //console.log(event.state)
+        if(event.state.id === 0){
+            removeIframe();
+        }
+    }
+};
+function readState(data,fn){
+   // console.log(data)
+    fn && fn(data);
+}
+function removeIframe(){
+    S.getEle('#iframeCon').eq(0).setAttribute('src','');
+    S.getEle('#iframeWrap').eq(0).setAttribute('style',"z-index:-1;opacity:0");
+}
+
+
+
