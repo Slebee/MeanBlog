@@ -1,3 +1,7 @@
+*{
+    margin:0;
+    padding:0;
+}
 body{
     margin:0;
     padding:0;
@@ -155,12 +159,9 @@ p.introduction{
 
 .article-detail-box{
     display: block;
-    width:1000px;
+    width:100%;
     margin:15px auto;
     background-color:#fff;
-    -webkit-box-shadow: 0 0 15px 10px #666;
-    -moz-box-shadow: 0 0 15px 10px #666;
-    box-shadow: 0 0 15px 10px #666;
 }
 a.close{
     display: block;
@@ -184,6 +185,10 @@ a.close:hover{
 }
 .part-article{
     padding:20px 20px;
+    width:50%;
+    float: left;
+    margin-left:210px;
+    min-width:700px;
 }
 .article-header{
     overflow: hidden;
@@ -220,12 +225,35 @@ a.close:hover{
 }
 .part-comment{
     height: 100%;
+    width:30%;
+    min-width:400px;
     padding:20px;
     -webkit-transition: all .5s;
     -moz-transition: all .5s;
     -ms-transition: all .5s;
     -o-transition: all .5s;
     transition: all .5s;
+    float: left;
+}
+.part-nav-wrap{
+    position: fixed;
+    left:0;
+    top:0;
+    width:200px;
+    height:100%;
+    border-right:1px dotted #ccc;
+    background-color:#e7e7e7
+}
+.main-nav-avatar{
+    margin:40px auto 20px auto;
+    width:100px;
+    height:100px;
+    overflow: hidden;
+    border:2px solid #fff;
+    border-radius:50%;
+}
+.main-nav-avatar>img{
+    width:100%;
 }
 .light-box{
     position: fixed;
@@ -243,6 +271,50 @@ a.close:hover{
     transition: all .5s;
     z-index:-1;
 }
+.main-nav{
+    width:100%;
+    overflow: hidden;
+    list-style: none;
+    margin-top:30px;
+}
+.main-nav>li{
+    padding-left:70px;
+    margin-bottom:15px;
+}
+.main-nav>li>a{
+    color:#666;
+    text-decoration: none;
+    margin-left:10px;
+    font-size:12px;
+}
+.main-nav>li.active>a{
+}
+.dir-p{
+    color:#999;
+    text-align: center;
+}
+.dir-p.name{
+    margin:0;
+    font-size:18px;
+    color:#666;
+}
+.icon{
+    display: inline-block!important;
+    width:12px!important;
+    font-size:14px;
+}
+.contact-ul{
+    padding:20px;
+    list-style:none;
+    position: absolute;
+    bottom:10px;
+    left:0;
+    font-size:12px;
+}
+.contact-ul .icon{
+    margin-right:8px;
+}
+
 @-webkit-keyframes sFadeIn {
     from {
         opacity: 0;
