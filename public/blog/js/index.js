@@ -16,7 +16,7 @@ S.domReady(function(){
             htmlStr += '<div class="row article-list-item animated sSlideInUp" style="animation-delay: '+ i*.1 +'s;">'+
             '<h3><a href="articles/'+ data[i]._id +'">'+ data[i].title +'</a> <span class="comment-count pull-right"><span class = "cy_cmt_count" id = "sourceId::'+data[i]._id+'" ></span></span></h3>'+
             '<p class="content">' + data[i].summary + '</p>'+
-            '<p class="parm"><small class="pull-left">Created By '+ data[i].creator.fullName +'</small><small class="pull-right" >'+ data[i].created +'</small></p>'+
+            '<p class="parm"><small class="pull-left">Created By '+ data[i].creator.fullName +'</small><small class="pull-right" ><i class="icon icon-time"></i>'+ data[i].created +'</small></p>'+
             '</div>'
         }
         S.getEle('#listWrap').html(htmlStr);

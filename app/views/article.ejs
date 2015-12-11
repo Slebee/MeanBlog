@@ -2,8 +2,8 @@
 <html>
 <head lang="CN">
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no">
-  <title><%=title%></title>
+  <!--<meta name="viewport" content="width=device-width,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no">-->
+  <title><%=title%> - Slebee</title>
   <link href="/blog/styles/bootstrap.min.css" rel="stylesheet">
   <link href="//cdn.bootcss.com/animate.css/3.4.0/animate.min.css" rel="stylesheet">
   <link href="/blog/styles/slebee.css" rel="stylesheet">
@@ -33,8 +33,8 @@
       welcome to my blog.
     </p>
     <ul class="main-nav">
-      <li class="active"><i class="icon icon-home"></i><a href="http://localhost:3000">主页</a></li>
-      <li><i class="icon icon-file"></i><a href="http://localhost:3000">文章</a></li>
+      <li><i class="icon icon-home"></i><a href="http://localhost:3000">主页</a></li>
+      <li class="active"><i class="icon icon-file"></i><a href="http://localhost:3000">文章</a></li>
       <li><i class="icon icon-comment"></i><a href="http://localhost:3000">关于</a></li>
     </ul>
     <ul class="contact-ul">
@@ -47,19 +47,18 @@
         <img src="/images/avatar.jpg" width="50" />
       </div>
       <div class="article-information">
-        <h1> <%=title%> </h1>
+        <h1><%=title%> </h1>
         <small>
-          <em>Posted on</em>
+          <em><i class="icon icon-time"></i></em>
           <em > <%=created%> </em>
-          <em>by</em>
-          <em> <%=creator.fullName%> </em>
+          <em class="author"><i class="icon icon-user"></i> <%=creator.fullName%> </em>
         </small>
       </div>
     </div>
     <div class="main-article"><%-content%></div>
   </div>
-  <div class="part-comment">
-    <!--高速版-->
+  <!--<div class="part-comment">
+    &lt;!&ndash;高速版&ndash;&gt;
     <div id="SOHUCS" sid="<%=_id%>"></div>
     <script charset="utf-8" type="text/javascript" src="http://changyan.sohu.com/upload/changyan.js" ></script>
     <script type="text/javascript">
@@ -68,7 +67,7 @@
         conf: 'prod_357c94518d69786f38775061397f2095'
       });
     </script>
-  </div>
+  </div>-->
 </div>
 </body>
 </html>

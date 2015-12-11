@@ -4,7 +4,7 @@ exports.render = function (req,res) {
     }
     req.session.lastVisit = new Date();
     res.render('index',{
-        title:'hello',
+        title:"Slebee - Blog",
         user: JSON.stringify(req.user)
     });
 };
